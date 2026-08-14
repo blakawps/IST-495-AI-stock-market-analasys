@@ -1,0 +1,18 @@
+Stock News Collector Scheduler
+Running every 1 minutes.
+Press Ctrl + C whenever you want to stop.
+
+
+============================================================
+Starting collection: 2026-08-14 14:11:08
+============================================================
+Checking feed: SEC Press Releases
+Found 25 entries from SEC Press Releases
+Checking feed: GlobeNewswire Stock Market News
+Using curl for GlobeNewswire
+Downloaded 36345 bytes from GlobeNewswire
+Found 20 entries from GlobeNewswire Stock Market News
+{'feeds_checked': 2, 'entries_seen': 45, 'matched': 42, 'inserted': 0, 'duplicates': 42, 'feed_errors': []}
+Collection completed successfully.
+
+Next collection in 1 minutes...

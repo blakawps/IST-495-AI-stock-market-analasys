@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Stock News Collector</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .sub {
+            color: #555;
+            margin-bottom: 24px;
+        }
+
+        button {
+            padding: 10px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .collector-controls {
+            margin: 20px 0;
+            padding: 18px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .collector-controls form {
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .manual-button {
+            background: #666;
+            color: white;
+        }
+
+        .start-button {
+            background: #28a745;
+            color: white;
+        }
+
+        .stop-button {
+            background: #dc3545;
+            color: white;
+        }
+
+        .running {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        .stopped {
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            padding: 10px 8px;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f5f5f5;
+        }
+
+        .error {
+            background: #ffecec;
+            padding: 12px;
+            margin-top: 16px;
+        }
+
+        .keywords {
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .news-summary {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.4;
+            max-width: 650px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <h1>Stock Market News Headlines</h1>
+
+    <p class="sub">
+        RSS headlines that matched one or more configured stock-market keywords.
+    </p>
+
+
+    <!-- Collector Controls -->
+
+    <div class="collector-controls">
+
+        <h3>News Collector Controls</h3>
+
+        <!-- Manual Collection -->
+
+        <form method="post" action="{{ url_for('collect_now') }}">
+            <button
+                type="submit"
+                class="manual-button">
+                Collect News Now
+            </button>
+        </form>
+
+
+        <!-- Automatic Collector Status -->
+
+        {% if scheduler_running %}
+
+            <p class="running">
+                ● Automatic Collector: RUNNING
+            </p>
+
+            <p>
+                Checking RSS feeds every minute.
+            </p>
+
+            <form
+                method="post"
+                action="{{ url_for('stop_scheduler') }}">
+
+                <button
+                    type="submit"
+                    class="stop-button">
+
+                    Stop Automatic Collector
+
+                </button>
+
+            </form>
+
+
+        {% else %}
+
+            <p class="stopped">
+                ● Automatic Collector: STOPPED
+            </p>
+
+            <form
+                method="post"
+                action="{{ url_for('start_scheduler') }}">
+
+                <button
+                    type="submit"
+                    class="start-button">
+
+                    Start Automatic Collector
+
+                </button>
+
+            </form>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- MongoDB Error -->
+
+    {% if error %}
+
+        <div class="error">
+            MongoDB error: {{ error }}
+        </div>
+
+    {% endif %}
+
+
+    <!-- Headlines -->
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>Headline</th>
+
+                <th>Source</th>
+
+                <th>Matched Words</th>
+
+                <th>Published</th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+        {% for item in headlines %}
+
+            <tr>
+
+                <td>
+
+                    {% if item.link %}
+
+                        <a
+                            href="{{ item.link }}"
+                            target="_blank"
+                            rel="noopener noreferrer">
+
+                            {{ item.title }}
+
+                        </a>
+
+                    {% else %}
+
+                        {{ item.title }}
+
+                    {% endif %}
+
+                    {% if item.summary %}
+
+                        <div class="news-summary">
+                        {{ item.summary | striptags }}
+                        </div>
+
+                    {% endif %}
+
+                </td>
+
+
+                <td>
+                    {{ item.source }}
+                </td>
+
+
+                <td class="keywords">
+
+                    {{ item.matched_keywords | join(', ') }}
+
+                </td>
+
+
+                <td>
+
+                    {{ item.published_at or 'Unknown' }}
+
+                </td>
+
+            </tr>
+
+
+        {% else %}
+
+            <tr>
+
+                <td colspan="4">
+
+                    No matching headlines stored yet.
+
+                </td>
+
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+
+<script>
+    let previousHeadlineCount = null;
+
+    async function checkForNewHeadlines() {
+
+        try {
+
+            const response = await fetch(
+                "/api/headline-count?time=" + Date.now(),
+                {
+                    cache: "no-store"
+                }
+            );
+
+            const data = await response.json();
+
+            if (data.count === undefined) {
+                return;
+            }
+
+            console.log(
+                "MongoDB headline count:",
+                data.count
+            );
+
+            // First check after page loads
+            if (previousHeadlineCount === null) {
+
+                previousHeadlineCount = data.count;
+
+                return;
+            }
+
+            // MongoDB contains new headlines
+            if (data.count > previousHeadlineCount) {
+
+                console.log(
+                    "New headlines detected!"
+                );
+
+                window.location.reload();
+            }
+
+            previousHeadlineCount = data.count;
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Headline check failed:",
+                error
+            );
+
+        }
+    }
+
+
+    // Check once when page loads
+    checkForNewHeadlines();
+
+
+    // Check MongoDB every 5 seconds
+    setInterval(
+        checkForNewHeadlines,
+        5000
+    );
+</script>
+
+</body>
+</html>
