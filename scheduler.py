@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-INTERVAL_MINUTES = 1
+INTERVAL_MINUTES = 3
 
 PROJECT_DIR = Path(__file__).resolve().parent
 COLLECTOR_FILE = PROJECT_DIR / "collector.py"

@@ -5,7 +5,9 @@ import subprocess
 import sys
 from pathlib import Path
 from flask import Flask, jsonify, redirect, render_template, request, url_for
-from pymongo.errors import PyMongoError
+from pymongo.errors import PyMongoError, DuplicateKeyError
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from collector import collect_news
 from config import FLASK_DEBUG, FLASK_HOST, FLASK_PORT
@@ -23,6 +25,22 @@ CREATE_NEW_PROCESS_GROUP = getattr(
     "CREATE_NEW_PROCESS_GROUP",
     0
 )
+
+def get_object_id(value):
+    try:
+        return ObjectId(value)
+    except (InvalidId, TypeError):
+        return None
+
+
+def settings_redirect(message=None, error=None):
+    return redirect(
+        url_for(
+            "settings",
+            message=message,
+            error=error
+        )
+    )
 
 def get_scheduler_pid():
     if not PID_FILE.exists():
@@ -114,10 +132,17 @@ def serialize_headline(doc):
         "summary": doc.get("summary", ""),
         "link": doc.get("link"),
         "source": doc.get("source"),
-        "matched_keywords": doc.get("matched_keywords", []),
 
+        "matched_keywords": doc.get(
+            "matched_keywords",
+            []
+        ),
 
-        # Human-readable ET times for website
+        "securities": doc.get(
+            "securities",
+            []
+        ),
+
         "published_at": published_display,
         "collected_at": collected_display,
     }
@@ -277,6 +302,294 @@ def stop_scheduler():
         PID_FILE.unlink()
 
     return redirect(url_for("home"))
+
+# ---------------------------------------------------------
+# SETTINGS PAGE
+# ---------------------------------------------------------
+
+@app.get("/settings")
+def settings():
+
+    feed_rows = []
+
+    for feed in rss_feeds.find().sort("name", 1):
+        feed_rows.append({
+            "id": str(feed["_id"]),
+            "name": feed.get("name", ""),
+            "url": feed.get("url", ""),
+            "enabled": feed.get("enabled", True),
+        })
+
+    keyword_rows = []
+
+    for keyword in keywords.find().sort("word", 1):
+        keyword_rows.append({
+            "id": str(keyword["_id"]),
+            "word": keyword.get("word", ""),
+            "enabled": keyword.get("enabled", True),
+        })
+
+    return render_template(
+        "settings.html",
+        feeds=feed_rows,
+        keyword_items=keyword_rows,
+        message=request.args.get("message"),
+        error=request.args.get("error"),
+    )
+
+
+# ---------------------------------------------------------
+# RSS FEEDS
+# ---------------------------------------------------------
+
+@app.post("/settings/feeds/add")
+def add_feed():
+
+    name = request.form.get("name", "").strip()
+    url = request.form.get("url", "").strip()
+
+    if not name or not url:
+        return settings_redirect(
+            error="Feed name and URL are required."
+        )
+
+    if not url.startswith(("http://", "https://")):
+        return settings_redirect(
+            error="RSS feed URL must start with http:// or https://"
+        )
+
+    try:
+        rss_feeds.insert_one({
+            "name": name,
+            "url": url,
+            "enabled": True,
+        })
+
+    except DuplicateKeyError:
+        return settings_redirect(
+            error="That RSS feed URL already exists."
+        )
+
+    except PyMongoError as exc:
+        return settings_redirect(
+            error=str(exc)
+        )
+
+    return settings_redirect(
+        message=f"RSS feed added: {name}"
+    )
+
+
+@app.post("/settings/feeds/<feed_id>/edit")
+def edit_feed(feed_id):
+
+    object_id = get_object_id(feed_id)
+
+    if object_id is None:
+        return settings_redirect(
+            error="Invalid RSS feed ID."
+        )
+
+    name = request.form.get("name", "").strip()
+    url = request.form.get("url", "").strip()
+
+    enabled = (
+        request.form.get("enabled") == "on"
+    )
+
+    if not name or not url:
+        return settings_redirect(
+            error="Feed name and URL are required."
+        )
+
+    if not url.startswith(("http://", "https://")):
+        return settings_redirect(
+            error="RSS feed URL must start with http:// or https://"
+        )
+
+    try:
+        result = rss_feeds.update_one(
+            {"_id": object_id},
+            {
+                "$set": {
+                    "name": name,
+                    "url": url,
+                    "enabled": enabled,
+                }
+            }
+        )
+
+        if result.matched_count == 0:
+            return settings_redirect(
+                error="RSS feed was not found."
+            )
+
+    except DuplicateKeyError:
+        return settings_redirect(
+            error="Another RSS feed already uses that URL."
+        )
+
+    except PyMongoError as exc:
+        return settings_redirect(
+            error=str(exc)
+        )
+
+    return settings_redirect(
+        message=f"RSS feed updated: {name}"
+    )
+
+
+@app.post("/settings/feeds/<feed_id>/delete")
+def delete_feed(feed_id):
+
+    object_id = get_object_id(feed_id)
+
+    if object_id is None:
+        return settings_redirect(
+            error="Invalid RSS feed ID."
+        )
+
+    try:
+        result = rss_feeds.delete_one(
+            {"_id": object_id}
+        )
+
+        if result.deleted_count == 0:
+            return settings_redirect(
+                error="RSS feed was not found."
+            )
+
+    except PyMongoError as exc:
+        return settings_redirect(
+            error=str(exc)
+        )
+
+    return settings_redirect(
+        message="RSS feed deleted."
+    )
+
+
+# ---------------------------------------------------------
+# KEYWORDS
+# ---------------------------------------------------------
+
+@app.post("/settings/keywords/add")
+def add_keyword():
+
+    word = request.form.get(
+        "word",
+        ""
+    ).strip().lower()
+
+    if not word:
+        return settings_redirect(
+            error="Keyword cannot be empty."
+        )
+
+    try:
+        keywords.insert_one({
+            "word": word,
+            "enabled": True,
+        })
+
+    except DuplicateKeyError:
+        return settings_redirect(
+            error="That keyword already exists."
+        )
+
+    except PyMongoError as exc:
+        return settings_redirect(
+            error=str(exc)
+        )
+
+    return settings_redirect(
+        message=f"Keyword added: {word}"
+    )
+
+
+@app.post("/settings/keywords/<keyword_id>/edit")
+def edit_keyword(keyword_id):
+
+    object_id = get_object_id(keyword_id)
+
+    if object_id is None:
+        return settings_redirect(
+            error="Invalid keyword ID."
+        )
+
+    word = request.form.get(
+        "word",
+        ""
+    ).strip().lower()
+
+    enabled = (
+        request.form.get("enabled") == "on"
+    )
+
+    if not word:
+        return settings_redirect(
+            error="Keyword cannot be empty."
+        )
+
+    try:
+        result = keywords.update_one(
+            {"_id": object_id},
+            {
+                "$set": {
+                    "word": word,
+                    "enabled": enabled,
+                }
+            }
+        )
+
+        if result.matched_count == 0:
+            return settings_redirect(
+                error="Keyword was not found."
+            )
+
+    except DuplicateKeyError:
+        return settings_redirect(
+            error="That keyword already exists."
+        )
+
+    except PyMongoError as exc:
+        return settings_redirect(
+            error=str(exc)
+        )
+
+    return settings_redirect(
+        message=f"Keyword updated: {word}"
+    )
+
+
+@app.post("/settings/keywords/<keyword_id>/delete")
+def delete_keyword(keyword_id):
+
+    object_id = get_object_id(keyword_id)
+
+    if object_id is None:
+        return settings_redirect(
+            error="Invalid keyword ID."
+        )
+
+    try:
+        result = keywords.delete_one(
+            {"_id": object_id}
+        )
+
+        if result.deleted_count == 0:
+            return settings_redirect(
+                error="Keyword was not found."
+            )
+
+    except PyMongoError as exc:
+        return settings_redirect(
+            error=str(exc)
+        )
+
+    return settings_redirect(
+        message="Keyword deleted."
+    )
 
 
 if __name__ == "__main__":

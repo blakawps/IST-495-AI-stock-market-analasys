@@ -17,6 +17,8 @@ def ensure_indexes():
     headlines.create_index([("published_at", DESCENDING)])
     headlines.create_index([("source", ASCENDING)])
     headlines.create_index([("matched_keywords", ASCENDING)])
+    headlines.create_index([("securities.symbol", ASCENDING)])
+    headlines.create_index([("securities.exchange", ASCENDING)])
 
     rss_feeds.create_index([("url", ASCENDING)], unique=True)
     keywords.create_index([("word", ASCENDING)], unique=True)

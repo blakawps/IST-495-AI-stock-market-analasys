@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>Stock News Settings</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        h2 {
+            margin-top: 40px;
+        }
+
+        .nav {
+            margin-bottom: 30px;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: #0066cc;
+        }
+
+        .message {
+            background: #e8f7e8;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .error {
+            background: #ffecec;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            color: #a00000;
+        }
+
+        .add-box {
+            background: #f5f5f5;
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .feed-row,
+        .keyword-row {
+            border-bottom: 1px solid #ddd;
+            padding: 15px 0;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            padding: 9px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .feed-name {
+            width: 220px;
+        }
+
+        .feed-url {
+            width: 500px;
+        }
+
+        .keyword-input {
+            width: 300px;
+        }
+
+        button {
+            padding: 9px 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .add-button {
+            background: #28a745;
+            color: white;
+        }
+
+        .save-button {
+            background: #0066cc;
+            color: white;
+        }
+
+        .delete-button {
+            background: #dc3545;
+            color: white;
+        }
+
+        .enabled-label {
+            margin: 0 10px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="nav">
+
+        <a href="{{ url_for('home') }}">
+            ← Back to News
+        </a>
+
+    </div>
+
+
+    <h1>Settings</h1>
+
+    <p>
+        Manage RSS feeds and stock-market filter keywords.
+    </p>
+
+
+    {% if message %}
+
+        <div class="message">
+            {{ message }}
+        </div>
+
+    {% endif %}
+
+
+    {% if error %}
+
+        <div class="error">
+            {{ error }}
+        </div>
+
+    {% endif %}
+
+
+    <!-- RSS FEEDS -->
+
+    <h2>RSS Feeds</h2>
+
+
+    <div class="add-box">
+
+        <h3>Add RSS Feed</h3>
+
+        <form
+            method="post"
+            action="{{ url_for('add_feed') }}"
+        >
+
+            <input
+                type="text"
+                name="name"
+                placeholder="Feed name"
+                required
+            >
+
+            <input
+                type="url"
+                name="url"
+                placeholder="https://example.com/rss"
+                size="55"
+                required
+            >
+
+            <button
+                type="submit"
+                class="add-button"
+            >
+                Add Feed
+            </button>
+
+        </form>
+
+    </div>
+
+
+    {% for feed in feeds %}
+
+        <div class="feed-row">
+
+            <form
+                method="post"
+                action="{{ url_for(
+                    'edit_feed',
+                    feed_id=feed.id
+                ) }}"
+            >
+
+                <input
+                    class="feed-name"
+                    type="text"
+                    name="name"
+                    value="{{ feed.name }}"
+                    required
+                >
+
+                <input
+                    class="feed-url"
+                    type="url"
+                    name="url"
+                    value="{{ feed.url }}"
+                    required
+                >
+
+                <label class="enabled-label">
+
+                    <input
+                        type="checkbox"
+                        name="enabled"
+                        {% if feed.enabled %}checked{% endif %}
+                    >
+
+                    Enabled
+
+                </label>
+
+                <button
+                    type="submit"
+                    class="save-button"
+                >
+                    Save
+                </button>
+
+                <button
+                    type="submit"
+                    class="delete-button"
+                    formaction="{{ url_for(
+                        'delete_feed',
+                        feed_id=feed.id
+                    ) }}"
+                    onclick="
+                        return confirm(
+                            'Delete this RSS feed?'
+                        );
+                    "
+                >
+                    Delete
+                </button>
+
+            </form>
+
+        </div>
+
+    {% else %}
+
+        <p>No RSS feeds configured.</p>
+
+    {% endfor %}
+
+
+    <!-- KEYWORDS -->
+
+    <h2>Keywords</h2>
+
+
+    <div class="add-box">
+
+        <h3>Add Keyword</h3>
+
+        <form
+            method="post"
+            action="{{ url_for('add_keyword') }}"
+        >
+
+            <input
+                class="keyword-input"
+                type="text"
+                name="word"
+                placeholder="Example: earnings"
+                required
+            >
+
+            <button
+                type="submit"
+                class="add-button"
+            >
+                Add Keyword
+            </button>
+
+        </form>
+
+    </div>
+
+
+    {% for item in keyword_items %}
+
+        <div class="keyword-row">
+
+            <form
+                method="post"
+                action="{{ url_for(
+                    'edit_keyword',
+                    keyword_id=item.id
+                ) }}"
+            >
+
+                <input
+                    class="keyword-input"
+                    type="text"
+                    name="word"
+                    value="{{ item.word }}"
+                    required
+                >
+
+                <label class="enabled-label">
+
+                    <input
+                        type="checkbox"
+                        name="enabled"
+                        {% if item.enabled %}checked{% endif %}
+                    >
+
+                    Enabled
+
+                </label>
+
+                <button
+                    type="submit"
+                    class="save-button"
+                >
+                    Save
+                </button>
+
+                <button
+                    type="submit"
+                    class="delete-button"
+                    formaction="{{ url_for(
+                        'delete_keyword',
+                        keyword_id=item.id
+                    ) }}"
+                    onclick="
+                        return confirm(
+                            'Delete this keyword?'
+                        );
+                    "
+                >
+                    Delete
+                </button>
+
+            </form>
+
+        </div>
+
+    {% else %}
+
+        <p>No keywords configured.</p>
+
+    {% endfor %}
+
+</body>
+
+</html>
