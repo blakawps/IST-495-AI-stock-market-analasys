@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import time
@@ -8,6 +9,9 @@ INTERVAL_MINUTES = 3
 
 PROJECT_DIR = Path(__file__).resolve().parent
 COLLECTOR_FILE = PROJECT_DIR / "collector.py"
+
+PID_FILE = PROJECT_DIR / "scheduler.pid"
+STOP_FILE = PROJECT_DIR / "scheduler.stop"
 
 
 def run_collector():
@@ -24,29 +28,75 @@ def run_collector():
         if result.returncode == 0:
             print("Collection completed successfully.")
         else:
-            print(f"Collector exited with code {result.returncode}")
+            print(
+                f"Collector exited with code "
+                f"{result.returncode}"
+            )
 
     except Exception as exc:
         print(f"Scheduler error: {exc}")
 
 
+def stop_requested():
+    return STOP_FILE.exists()
+
+
 def main():
+    current_pid = os.getpid()
+
+    # Scheduler records its own PID
+    PID_FILE.write_text(str(current_pid))
+
     print("Stock News Collector Scheduler")
-    print(f"Running every {INTERVAL_MINUTES} minutes.")
-    print("Press Ctrl + C whenever you want to stop.\n")
+    print(f"Scheduler PID: {current_pid}")
+    print(
+        f"Running every {INTERVAL_MINUTES} minutes."
+    )
+    print(
+        "Use the website Stop button or CTRL+C to stop.\n"
+    )
 
     try:
-        while True:
+        while not stop_requested():
+
             run_collector()
 
+            if stop_requested():
+                break
+
             print(
-                f"\nNext collection in {INTERVAL_MINUTES} minutes..."
+                f"\nNext collection in "
+                f"{INTERVAL_MINUTES} minutes..."
             )
 
-            time.sleep(INTERVAL_MINUTES * 60)
+            # Sleep one second at a time so the website
+            # can stop the scheduler immediately.
+            for _ in range(
+                INTERVAL_MINUTES * 60
+            ):
+                if stop_requested():
+                    break
+
+                time.sleep(1)
 
     except KeyboardInterrupt:
-        print("\n\nScheduler stopped by user.")
+        print("\nScheduler stopped by user.")
+
+    finally:
+        print("\nAutomatic collector stopped.")
+
+        # Only remove PID file if it still belongs
+        # to this scheduler process.
+        try:
+            if PID_FILE.exists():
+
+                stored_pid = PID_FILE.read_text().strip()
+
+                if stored_pid == str(current_pid):
+                    PID_FILE.unlink()
+
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":

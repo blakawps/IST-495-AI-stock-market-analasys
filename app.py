@@ -18,6 +18,7 @@ PROJECT_DIR = Path(__file__).resolve().parent
 SCHEDULER_FILE = PROJECT_DIR / "scheduler.py"
 PID_FILE = PROJECT_DIR / "scheduler.pid"
 LOG_FILE = PROJECT_DIR / "scheduler.log"
+STOP_FILE = PROJECT_DIR / "scheduler.stop"
 
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 CREATE_NEW_PROCESS_GROUP = getattr(
@@ -25,6 +26,8 @@ CREATE_NEW_PROCESS_GROUP = getattr(
     "CREATE_NEW_PROCESS_GROUP",
     0
 )
+
+
 
 def get_object_id(value):
     try:
@@ -164,13 +167,82 @@ def api_headline_count():
 @app.get("/")
 def home():
     try:
+        news_filter = request.args.get(
+            "filter",
+            "all"
+        )
+
+        pipeline = []
+
+        if news_filter == "ticker_only":
+
+            pipeline.append({
+                "$match": {
+                    "securities.0": {
+                        "$exists": True
+                    }
+                }
+            })
+
+        elif news_filter == "non_ticker":
+
+            pipeline.append({
+                "$match": {
+                    "securities.0": {
+                        "$exists": False
+                    }
+                }
+            })
+
+        elif news_filter == "ticker_first":
+
+            pipeline.append({
+                "$addFields": {
+                    "ticker_priority": {
+                        "$cond": [
+                            {
+                                "$gt": [
+                                    {
+                                        "$size": {
+                                            "$ifNull": [
+                                                "$securities",
+                                                []
+                                            ]
+                                        }
+                                    },
+                                    0
+                                ]
+                            },
+                            1,
+                            0
+                        ]
+                    }
+                }
+            })
+
+            pipeline.append({
+                "$sort": {
+                    "ticker_priority": -1,
+                    "published_at": -1,
+                    "collected_at": -1
+                }
+            })
+
+        if news_filter != "ticker_first":
+
+            pipeline.append({
+                "$sort": {
+                    "published_at": -1,
+                    "collected_at": -1
+                }
+            })
+
+        pipeline.append({
+            "$limit": 500
+        })
+
         docs = list(
-            headlines.find()
-            .sort([
-                ("published_at", -1),
-                ("collected_at", -1)
-            ])
-            .limit(500)
+            headlines.aggregate(pipeline)
         )
 
         return render_template(
@@ -180,15 +252,18 @@ def home():
                 for doc in docs
             ],
             error=None,
-            scheduler_running=scheduler_is_running()
+            scheduler_running=scheduler_is_running(),
+            news_filter=news_filter
         )
 
     except PyMongoError as exc:
+
         return render_template(
             "index.html",
             headlines=[],
             error=str(exc),
-            scheduler_running=scheduler_is_running()
+            scheduler_running=scheduler_is_running(),
+            news_filter="all"
         ), 500
 
 @app.post("/collect")
@@ -255,6 +330,10 @@ def start_scheduler():
         encoding="utf-8"
     )
 
+    # Remove old stop request
+    if STOP_FILE.exists():
+        STOP_FILE.unlink()
+
     process = subprocess.Popen(
         [
             sys.executable,
@@ -278,11 +357,15 @@ def start_scheduler():
 @app.route("/scheduler/stop", methods=["POST"])
 def stop_scheduler():
 
+    # Tell ALL scheduler processes to stop
+    STOP_FILE.write_text("stop")
+
     pid = get_scheduler_pid()
 
     if pid and process_is_running(pid):
 
         if sys.platform == "win32":
+
             subprocess.run(
                 [
                     "taskkill",
@@ -298,10 +381,15 @@ def stop_scheduler():
         else:
             os.kill(pid, 15)
 
-    if PID_FILE.exists():
-        PID_FILE.unlink()
+    try:
+        if PID_FILE.exists():
+            PID_FILE.unlink()
+    except OSError:
+        pass
 
-    return redirect(url_for("home"))
+    return redirect(
+        url_for("home")
+    )
 
 # ---------------------------------------------------------
 # SETTINGS PAGE
