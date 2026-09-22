@@ -11,7 +11,7 @@ from bson.errors import InvalidId
 
 from collector import collect_news
 from config import FLASK_DEBUG, FLASK_HOST, FLASK_PORT
-from db import ensure_indexes, headlines, keywords, ping_database, rss_feeds
+from db import ensure_indexes, headlines, keywords, ping_database, rss_feeds,companies, market_data
 
 app = Flask(__name__)
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -28,6 +28,52 @@ CREATE_NEW_PROCESS_GROUP = getattr(
 )
 
 
+def format_market_cap(value):
+
+    if value is None:
+        return "N/A"
+
+    # Finviz gives market cap in millions
+
+    if value >= 1_000_000:
+
+        return (
+            f"${value / 1_000_000:.2f}T"
+        )
+
+    if value >= 1_000:
+
+        return (
+            f"${value / 1_000:.2f}B"
+        )
+
+    return f"${value:.2f}M"
+
+
+def format_volume(value):
+
+    if value is None:
+        return "N/A"
+
+    if value >= 1_000_000_000:
+
+        return (
+            f"{value / 1_000_000_000:.2f}B"
+        )
+
+    if value >= 1_000_000:
+
+        return (
+            f"{value / 1_000_000:.2f}M"
+        )
+
+    if value >= 1_000:
+
+        return (
+            f"{value / 1_000:.2f}K"
+        )
+
+    return str(value)
 
 def get_object_id(value):
     try:
@@ -164,112 +210,407 @@ def api_headline_count():
             "error": str(exc)
         }), 500
 
+def matches_market_cap_filter(
+    market_cap,
+    selected_filter
+):
+
+    if selected_filter == "any":
+        return True
+
+    if market_cap is None:
+        return False
+
+    # Finviz Market Cap is in millions
+
+    if selected_filter == "mega":
+        return market_cap >= 200_000
+
+    if selected_filter == "large":
+        return (
+            10_000
+            <= market_cap
+            < 200_000
+        )
+
+    if selected_filter == "mid":
+        return (
+            2_000
+            <= market_cap
+            < 10_000
+        )
+
+    if selected_filter == "small":
+        return (
+            300
+            <= market_cap
+            < 2_000
+        )
+
+    if selected_filter == "micro":
+        return (
+            50
+            <= market_cap
+            < 300
+        )
+
+    if selected_filter == "nano":
+        return market_cap < 50
+
+    return True
+
+
+def matches_volume_filter(
+    volume,
+    selected_filter
+):
+
+    if selected_filter == "any":
+        return True
+
+    if volume is None:
+        return False
+
+    if selected_filter == "10m_plus":
+        return volume >= 10_000_000
+
+    if selected_filter == "5m_plus":
+        return volume >= 5_000_000
+
+    if selected_filter == "1m_plus":
+        return volume >= 1_000_000
+
+    if selected_filter == "500k_plus":
+        return volume >= 500_000
+
+    if selected_filter == "100k_plus":
+        return volume >= 100_000
+
+    if selected_filter == "under_100k":
+        return volume < 100_000
+
+    return True
+
 @app.get("/")
 def home():
     try:
-        news_filter = request.args.get(
-            "filter",
-            "all"
+
+        market_cap_filter = request.args.get(
+            "market_cap",
+            "any"
         )
 
-        pipeline = []
+        volume_filter = request.args.get(
+            "volume",
+            "any"
+        )
 
-        if news_filter == "ticker_only":
+        pipeline = [
 
-            pipeline.append({
+            # Only articles where we actually found
+            # at least one ticker
+            {
                 "$match": {
                     "securities.0": {
                         "$exists": True
                     }
                 }
-            })
+            },
 
-        elif news_filter == "non_ticker":
+            # One row per ticker in each article
+            {
+                "$unwind": "$securities"
+            },
 
-            pipeline.append({
+            # Ignore malformed ticker entries
+            {
                 "$match": {
-                    "securities.0": {
-                        "$exists": False
+                    "securities.symbol": {
+                        "$exists": True,
+                        "$ne": ""
                     }
                 }
-            })
+            },
 
-        elif news_filter == "ticker_first":
+            # Group every article by ticker
+            {
+                "$group": {
+                    "_id": "$securities.symbol",
 
-            pipeline.append({
-                "$addFields": {
-                    "ticker_priority": {
-                        "$cond": [
-                            {
-                                "$gt": [
-                                    {
-                                        "$size": {
-                                            "$ifNull": [
-                                                "$securities",
-                                                []
-                                            ]
-                                        }
-                                    },
-                                    0
-                                ]
-                            },
-                            1,
-                            0
-                        ]
+                    "exchange": {
+                        "$first": "$securities.exchange"
+                    },
+
+                    "article_count": {
+                        "$sum": 1
+                    },
+
+                    "latest_published": {
+                        "$max": "$published_at"
+                    },
+
+                    "latest_collected": {
+                        "$max": "$collected_at"
                     }
                 }
-            })
+            },
 
-            pipeline.append({
+            # Newest active ticker first
+            {
                 "$sort": {
-                    "ticker_priority": -1,
-                    "published_at": -1,
-                    "collected_at": -1
+                    "latest_published": -1
                 }
-            })
+            }
+        ]
 
-        if news_filter != "ticker_first":
-
-            pipeline.append({
-                "$sort": {
-                    "published_at": -1,
-                    "collected_at": -1
-                }
-            })
-
-        pipeline.append({
-            "$limit": 500
-        })
-
-        docs = list(
+        ticker_results = list(
             headlines.aggregate(pipeline)
         )
 
+        ticker_list = []
+
+        for ticker in ticker_results:
+
+            symbol = ticker["_id"]
+
+            finviz_data = market_data.find_one(
+                {"symbol": symbol},
+                {
+                    "_id": 0,
+                    "market_cap_millions": 1,
+                    "volume": 1,
+                }
+            )
+
+            # Use companies collection only to obtain
+            # company name / missing exchange.
+            company = companies.find_one(
+                {"symbol": symbol},
+                {
+                    "_id": 0,
+                    "company_name": 1,
+                    "exchange": 1,
+                }
+            )
+
+            stock_docs = list(
+                headlines.find({
+                    "securities.symbol": symbol
+                })
+                .sort([
+                    ("published_at", -1),
+                    ("collected_at", -1)
+                ])
+                .limit(500)
+            )
+
+            news_items = [
+                serialize_headline(doc)
+                for doc in stock_docs
+            ]
+
+            company_name = None
+            company_exchange = None
+
+            if company:
+                company_name = company.get(
+                    "company_name"
+                )
+
+                company_exchange = company.get(
+                    "exchange"
+                )
+
+            market_cap = None
+            volume = None
+
+            if finviz_data:
+                market_cap = finviz_data.get(
+                    "market_cap_millions"
+                )
+
+                volume = finviz_data.get(
+                    "volume"
+                )
+
+                if not matches_market_cap_filter(
+                        market_cap,
+                        market_cap_filter
+                ):
+                    continue
+
+                if not matches_volume_filter(
+                        volume,
+                        volume_filter
+                ):
+                    continue
+
+            ticker_list.append({
+
+                "market_cap": market_cap,
+                "market_cap_display": format_market_cap(
+                    market_cap
+                ),
+
+                "volume": volume,
+                "volume_display": format_volume(
+                    volume
+                ),
+
+                "symbol": symbol,
+
+                "news_items": news_items,
+
+                "company_name": (
+                    company_name
+                    or symbol
+                ),
+
+                "exchange": (
+                    ticker.get("exchange")
+                    or company_exchange
+                ),
+
+                "article_count": ticker.get(
+                    "article_count",
+                    0
+                ),
+
+                "latest_published": ticker.get(
+                    "latest_published"
+                ),
+            })
+
         return render_template(
             "index.html",
-            headlines=[
-                serialize_headline(doc)
-                for doc in docs
-            ],
+            tickers=ticker_list,
             error=None,
             scheduler_running=scheduler_is_running(),
-            news_filter=news_filter
+            market_cap_filter=market_cap_filter,
+            volume_filter=volume_filter,
         )
 
     except PyMongoError as exc:
 
         return render_template(
             "index.html",
-            headlines=[],
+            tickers=[],
             error=str(exc),
             scheduler_running=scheduler_is_running(),
-            news_filter="all"
+            market_cap_filter="any",
+            volume_filter="any",
         ), 500
 
 @app.post("/collect")
 def collect_now():
     collect_news()
     return redirect(url_for("home"))
+
+@app.get("/stock/<symbol>")
+def stock_page(symbol):
+
+    try:
+
+        symbol = symbol.strip().upper()
+
+        # Find all collected news involving
+        # this ticker.
+        docs = list(
+            headlines.find({
+                "securities.symbol": symbol
+            })
+            .sort([
+                ("published_at", -1),
+                ("collected_at", -1)
+            ])
+            .limit(500)
+        )
+
+        if not docs:
+            return "Ticker not found.", 404
+
+        company = companies.find_one(
+            {"symbol": symbol},
+            {
+                "_id": 0,
+                "company_name": 1,
+                "exchange": 1,
+                "stock_sector": 1,
+            }
+        )
+
+        company_name = symbol
+        exchange = None
+        sector = None
+
+        if company:
+
+            company_name = company.get(
+                "company_name",
+                symbol
+            )
+
+            exchange = company.get(
+                "exchange"
+            )
+
+            sector = company.get(
+                "stock_sector"
+            )
+
+        # If exchange wasn't in company DB,
+        # get it from collected news.
+        if not exchange:
+
+            for doc in docs:
+
+                for security in doc.get(
+                    "securities",
+                    []
+                ):
+
+                    if (
+                        security.get("symbol")
+                        == symbol
+                    ):
+
+                        exchange = (
+                            security.get(
+                                "exchange"
+                            )
+                        )
+
+                        if exchange:
+                            break
+
+                if exchange:
+                    break
+
+        news_items = [
+            serialize_headline(doc)
+            for doc in docs
+        ]
+
+        return render_template(
+            "stock.html",
+
+            symbol=symbol,
+            company_name=company_name,
+            exchange=exchange,
+            sector=sector,
+
+            news_items=news_items,
+            article_count=len(news_items),
+
+            scheduler_running=scheduler_is_running()
+        )
+
+    except PyMongoError as exc:
+
+        return (
+            f"Database error: {exc}",
+            500
+        )
 
 
 @app.get("/health")

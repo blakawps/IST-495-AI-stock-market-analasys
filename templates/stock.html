@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ symbol }} - Collected News</title>
+</head>
+
+<body>
+
+<a href="{{ url_for('home') }}">
+    ← Back to Stocks
+</a>
+
+<h1>{{ symbol }}</h1>
+
+<h2>{{ company_name }}</h2>
+
+<p>
+    {% if exchange %}
+        {{ exchange }}
+    {% endif %}
+
+    {% if sector %}
+        · {{ sector }}
+    {% endif %}
+
+    · {{ article_count }} articles
+</p>
+
+<hr>
+
+<h2>Collected News</h2>
+
+{% for item in news_items %}
+
+<div class="article">
+
+    <h3>
+        {% if item.link %}
+            <a
+                href="{{ item.link }}"
+                target="_blank"
+            >
+                {{ item.title }}
+            </a>
+        {% else %}
+            {{ item.title }}
+        {% endif %}
+    </h3>
+
+    {% if item.summary %}
+        <p>
+            {{ item.summary | striptags }}
+        </p>
+    {% endif %}
+
+    <small>
+        {{ item.source }}
+
+        {% if item.published_at %}
+            · {{ item.published_at }}
+        {% endif %}
+    </small>
+
+</div>
+
+<hr>
+
+{% endfor %}
+
+</body>
+</html>

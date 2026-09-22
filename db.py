@@ -8,6 +8,8 @@ db = _client[MONGO_DB_NAME]
 headlines = db["headlines"]
 rss_feeds = db["rss_feeds"]
 keywords = db["keywords"]
+companies = db["companies"]
+market_data = db["market_data"]
 
 
 def ensure_indexes():
@@ -19,9 +21,17 @@ def ensure_indexes():
     headlines.create_index([("matched_keywords", ASCENDING)])
     headlines.create_index([("securities.symbol", ASCENDING)])
     headlines.create_index([("securities.exchange", ASCENDING)])
+    headlines.create_index([("securities.symbol", ASCENDING)])
 
     rss_feeds.create_index([("url", ASCENDING)], unique=True)
     keywords.create_index([("word", ASCENDING)], unique=True)
+    companies.create_index([("symbol", ASCENDING)],unique=True)
+    companies.create_index([("company_name", ASCENDING)])
+    companies.create_index([("aliases", ASCENDING)])
+    companies.create_index([("country_code", ASCENDING)])
+    companies.create_index([("asset_type", ASCENDING)])
+    market_data.create_index([("symbol", ASCENDING)],unique=True)
+    market_data.create_index([("updated_at", DESCENDING)])
 
 
 def ping_database():

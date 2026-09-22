@@ -7,12 +7,14 @@ import calendar
 import hashlib
 import re
 from datetime import datetime, timezone, timedelta
-
+from ticker_resolver import TickerResolver
 import feedparser
 from pymongo.errors import PyMongoError
-
 from config import RSS_USER_AGENT
 from db import ensure_indexes, headlines, keywords, rss_feeds
+from finviz_client import update_market_data
+
+ticker_resolver = TickerResolver()
 
 
 def download_globenewswire_feed(feed_url):
@@ -404,7 +406,7 @@ def collect_news():
                 continue
 
             # Extract ticker + exchange
-            securities = extract_securities(
+            securities = ticker_resolver.resolve(
                 entry,
                 title
             )
@@ -485,6 +487,9 @@ def collect_news():
                         "error": str(exc),
                     }
                 )
+    collected_symbols = headlines.distinct("securities.symbol")
+    finviz_stats = update_market_data(collected_symbols)
+    stats["finviz"] = finviz_stats
     stats["database_total"] = headlines.count_documents({})
     stats["process_id"] = os.getpid()
     return stats
