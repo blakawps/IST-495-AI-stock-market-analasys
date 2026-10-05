@@ -11,8 +11,9 @@ from ticker_resolver import TickerResolver
 import feedparser
 from pymongo.errors import PyMongoError
 from config import RSS_USER_AGENT
-from db import ensure_indexes, headlines, keywords, rss_feeds
+from db import ensure_indexes, headlines, keywords, rss_feeds, companies
 from finviz_client import update_market_data
+from stocktwits_scraper import (collect_stocktwits_for_symbols)
 
 ticker_resolver = TickerResolver()
 
@@ -296,6 +297,7 @@ def make_headline_hash(source_name, title, link):
 
 
 def collect_news():
+    stocktwits_symbols = set()
     ensure_indexes()
 
     active_keywords = get_active_keywords()
@@ -411,6 +413,40 @@ def collect_news():
                 title
             )
 
+            for security in securities:
+
+                symbol = security.get(
+                    "symbol"
+                )
+
+                exchange = security.get(
+                    "exchange"
+                )
+
+                if (
+                        symbol
+                        and exchange in {
+                    "NASDAQ",
+                    "NYSE",
+                    "NYSE AMERICAN",
+                }
+                ):
+                    company_record = companies.find_one(
+                        {
+                            "symbol": symbol
+                        },
+                        {
+                            "_id": 0,
+                            "symbol": 1,
+                            "asset_type": 1,
+                        }
+                    )
+
+                    if company_record:
+                        stocktwits_symbols.add(
+                            symbol
+                        )
+
             if securities:
                 print(
                     f"TICKER FOUND: {securities} | {title}"
@@ -492,6 +528,34 @@ def collect_news():
     stats["finviz"] = finviz_stats
     stats["database_total"] = headlines.count_documents({})
     stats["process_id"] = os.getpid()
+    if stocktwits_symbols:
+
+        print()
+        print(
+            "Collecting Stocktwits "
+            "rolling 60-minute data..."
+        )
+
+        stocktwits_stats = (
+            collect_stocktwits_for_symbols(
+                stocktwits_symbols
+            )
+        )
+
+        stats[
+            "stocktwits"
+        ] = stocktwits_stats
+
+    else:
+
+        stats[
+            "stocktwits"
+        ] = {
+            "symbols_checked": 0,
+            "messages_found": 0,
+            "messages_inserted": 0,
+            "errors": [],
+        }
     return stats
 
 

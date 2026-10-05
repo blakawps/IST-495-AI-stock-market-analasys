@@ -1,5 +1,9 @@
 from zoneinfo import ZoneInfo
-from datetime import timezone
+from datetime import (
+    datetime,
+    timezone,
+    timedelta,
+)
 import os
 import subprocess
 import sys
@@ -11,7 +15,7 @@ from bson.errors import InvalidId
 
 from collector import collect_news
 from config import FLASK_DEBUG, FLASK_HOST, FLASK_PORT
-from db import ensure_indexes, headlines, keywords, ping_database, rss_feeds,companies, market_data
+from db import ensure_indexes, headlines, keywords, ping_database, rss_feeds,companies, market_data, stocktwits_posts
 
 app = Flask(__name__)
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -291,9 +295,168 @@ def matches_volume_filter(
 
     return True
 
+def get_stocktwits_stats():
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    # TRUE ROLLING 60-MINUTE WINDOW
+    cutoff = (
+        now
+        - timedelta(minutes=60)
+    )
+
+    pipeline = [
+
+        {
+            "$match": {
+
+                "created_at": {
+                    "$gte": cutoff,
+                    "$lte": now,
+                }
+
+            }
+        },
+
+        {
+            "$group": {
+
+                "_id": "$symbol",
+
+                "message_count": {
+                    "$sum": 1
+                },
+
+                "bullish": {
+
+                    "$sum": {
+
+                        "$cond": [
+
+                            {
+                                "$eq": [
+                                    "$sentiment",
+                                    "Bullish",
+                                ]
+                            },
+
+                            1,
+
+                            0,
+                        ]
+                    }
+                },
+
+                "bearish": {
+
+                    "$sum": {
+
+                        "$cond": [
+
+                            {
+                                "$eq": [
+                                    "$sentiment",
+                                    "Bearish",
+                                ]
+                            },
+
+                            1,
+
+                            0,
+                        ]
+                    }
+                },
+
+            }
+        },
+    ]
+
+    results = {}
+
+    for row in (
+        stocktwits_posts.aggregate(
+            pipeline
+        )
+    ):
+
+        symbol = row["_id"]
+
+        message_count = row.get(
+            "message_count",
+            0
+        )
+
+        bullish = row.get(
+            "bullish",
+            0
+        )
+
+        bearish = row.get(
+            "bearish",
+            0
+        )
+
+        labeled_count = (
+            bullish
+            + bearish
+        )
+
+        if labeled_count > 0:
+
+            sentiment = (
+                bullish
+                - bearish
+            ) / labeled_count
+
+        else:
+
+            sentiment = None
+
+        # Exactly a one-hour window,
+        # therefore count = messages/hour
+        density = message_count
+
+        results[symbol] = {
+
+            "message_count":
+                message_count,
+
+            "density":
+                density,
+
+            "bullish":
+                bullish,
+
+            "bearish":
+                bearish,
+
+            "sentiment":
+                sentiment,
+
+            "window_start":
+                cutoff,
+
+            "window_end":
+                now,
+        }
+
+    return results
+
 @app.get("/")
 def home():
+
+    sort_by = request.args.get(
+        "sort",
+        default="default",
+        type=str
+    )
+
     try:
+        stocktwits_stats = (
+            get_stocktwits_stats()
+        )
 
         market_cap_filter = request.args.get(
             "market_cap",
@@ -373,6 +536,35 @@ def home():
 
             symbol = ticker["_id"]
 
+            st = stocktwits_stats.get(
+                symbol,
+                {}
+            )
+
+            st_sentiment = st.get(
+                "sentiment"
+            )
+
+            st_message_count = st.get(
+                "message_count",
+                0
+            )
+
+            st_density = st.get(
+                "density",
+                0
+            )
+
+            st_bullish = st.get(
+                "bullish",
+                0
+            )
+
+            st_bearish = st.get(
+                "bearish",
+                0
+            )
+
             finviz_data = market_data.find_one(
                 {"symbol": symbol},
                 {
@@ -447,6 +639,21 @@ def home():
 
             ticker_list.append({
 
+                "stocktwits_sentiment":
+                    st_sentiment,
+
+                "stocktwits_message_count":
+                    st_message_count,
+
+                "stocktwits_density":
+                    st_density,
+
+                "stocktwits_bullish":
+                    st_bullish,
+
+                "stocktwits_bearish":
+                    st_bearish,
+
                 "market_cap": market_cap,
                 "market_cap_display": format_market_cap(
                     market_cap
@@ -481,6 +688,27 @@ def home():
                 ),
             })
 
+            if sort_by == "st_density_high":
+
+                ticker_list.sort(
+                    key=lambda x: x.get(
+                        "stocktwits_density",
+                        0
+                    ),
+                    reverse=True
+                )
+
+            elif sort_by == "st_density_low":
+
+                ticker_list.sort(
+                    key=lambda x: x.get(
+                        "stocktwits_density",
+                        0
+                    )
+                )
+
+
+
         return render_template(
             "index.html",
             tickers=ticker_list,
@@ -488,6 +716,7 @@ def home():
             scheduler_running=scheduler_is_running(),
             market_cap_filter=market_cap_filter,
             volume_filter=volume_filter,
+            sort_by=sort_by,
         )
 
     except PyMongoError as exc:

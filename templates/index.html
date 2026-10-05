@@ -78,23 +78,23 @@
             list-style: none;
         }
 
-        .ticker-header {
+        .ticker-header,
+        .ticker-row {
+
             display: grid;
 
             grid-template-columns:
-                100px
-                1fr
-                150px
-                160px
                 80px
-                30px;
+                1fr
+                115px
+                120px
+                60px
+                105px
+                100px
+                95px
+                25px;
 
-            padding: 10px 20px;
-
-            font-size: 0.85rem;
-            font-weight: bold;
-
-            opacity: 0.7;
+            align-items: center;
         }
 
         .ticker-market-cap,
@@ -105,24 +105,6 @@
 
         .ticker-dropdown summary::-webkit-details-marker {
             display: none;
-        }
-
-        .ticker-row {
-            display: grid;
-
-            grid-template-columns:
-                100px
-                1fr
-                150px
-                160px
-                80px
-                30px;
-
-            align-items: center;
-
-            padding: 16px 20px;
-
-            cursor: pointer;
         }
 
         .ticker-row:hover {
@@ -608,6 +590,49 @@
 
             </div>
 
+            <div class="filter-group">
+
+                <label for="sort">
+                    Sort By
+                </label>
+
+                <select
+                    name="sort"
+                    id="sort"
+                    onchange="this.form.submit()"
+                >
+
+                    <option
+                        value="default"
+                        {% if sort_by == "default" %}
+                            selected
+                        {% endif %}
+                    >
+                        Default
+                    </option>
+
+                    <option
+                        value="st_density_high"
+                        {% if sort_by == "st_density_high" %}
+                            selected
+                        {% endif %}
+                    >
+                        ST Density: High → Low
+                    </option>
+
+                    <option
+                        value="st_density_low"
+                        {% if sort_by == "st_density_low" %}
+                            selected
+                        {% endif %}
+                    >
+                        ST Density: Low → High
+                    </option>
+
+                </select>
+
+            </div>
+
 
             <a
                 href="{{ url_for('home') }}"
@@ -637,6 +662,12 @@
         <div>Trading Volume</div>
 
         <div>News</div>
+
+        <div>ST Sentiment</div>
+
+        <div>ST Messages</div>
+
+        <div>ST Density</div>
 
         <div></div>
 
@@ -668,6 +699,32 @@
 
                     <div class="ticker-count">
                         {{ ticker.article_count }}
+                    </div>
+
+                    <div class="ticker-st-sentiment">
+
+                        {% if ticker.stocktwits_sentiment is not none %}
+
+                            {% if ticker.stocktwits_sentiment > 0 %}
+                                +
+                            {% endif %}
+
+                            {{ "%.2f" | format(ticker.stocktwits_sentiment) }}
+
+                        {% else %}
+
+                            N/A
+
+                        {% endif %}
+
+                    </div>
+
+                    <div class="ticker-st-messages">
+                        {{ ticker.stocktwits_message_count }}
+                    </div>
+
+                    <div class="ticker-st-density">
+                        {{ ticker.stocktwits_density }}/hr
                     </div>
 
                     <div class="ticker-arrow">
@@ -843,6 +900,19 @@
         );
 
     });
+
+</script>
+
+<script>
+
+    setInterval(
+        function () {
+
+            window.location.reload();
+
+        },
+        60000
+    );
 
 </script>
 
