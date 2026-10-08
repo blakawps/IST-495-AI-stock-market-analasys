@@ -45,52 +45,120 @@ def fetch_finviz_data(symbols):
     for row in reader:
 
         symbol = (
-            row.get("Ticker")
-            or ""
+                row.get("Ticker")
+                or ""
         ).strip().upper()
 
         if not symbol:
             continue
 
         try:
+
             market_cap_millions = float(
-                row.get("Market Cap", 0)
+                row.get(
+                    "Market Cap",
+                    0
+                )
             )
-        except (ValueError, TypeError):
+
+        except (
+                ValueError,
+                TypeError
+        ):
+
             market_cap_millions = None
 
         try:
+
             volume = int(
                 float(
-                    row.get("Volume", 0)
+                    row.get(
+                        "Volume",
+                        0
+                    )
                 )
             )
-        except (ValueError, TypeError):
+
+        except (
+                ValueError,
+                TypeError
+        ):
+
             volume = None
 
         try:
+
             price = float(
-                row.get("Price", 0)
+                row.get(
+                    "Price",
+                    0
+                )
             )
-        except (ValueError, TypeError):
+
+        except (
+                ValueError,
+                TypeError
+        ):
+
             price = None
 
+        # -----------------------------
+        # DAILY % CHANGE
+        # -----------------------------
+
+        raw_change = (
+                row.get("Change")
+                or ""
+        ).strip()
+
+        try:
+
+            change_percent = float(
+                raw_change
+                .replace("%", "")
+                .replace(",", "")
+            )
+
+        except (
+                ValueError,
+                TypeError
+        ):
+
+            change_percent = None
+
         results.append({
-            "symbol": symbol,
-            "company": row.get("Company"),
-            "sector": row.get("Sector"),
-            "industry": row.get("Industry"),
+
+            "symbol":
+                symbol,
+
+            "company":
+                row.get("Company"),
+
+            "sector":
+                row.get("Sector"),
+
+            "industry":
+                row.get("Industry"),
 
             "market_cap_millions":
                 market_cap_millions,
 
-            "volume": volume,
-            "price": price,
+            "volume":
+                volume,
+
+            "price":
+                price,
+
+            "change_percent":
+                change_percent,
 
             "updated_at":
-                datetime.now(timezone.utc),
+                datetime.now(
+                    timezone.utc
+                ),
 
-            "source": "finviz",
+            "source":
+                "finviz",
         })
 
     return results
@@ -113,10 +181,11 @@ def update_market_data(symbols):
             "skipped_cached": 0,
         }
 
-    # Only refresh data older than 15 minutes
+    # Refresh for each 3-minute
+    # analytics collection cycle.
     cutoff = (
-        datetime.now(timezone.utc)
-        - timedelta(minutes=15)
+            datetime.now(timezone.utc)
+            - timedelta(minutes=3)
     )
 
     symbols_to_update = []

@@ -11,6 +11,7 @@ keywords = db["keywords"]
 companies = db["companies"]
 market_data = db["market_data"]
 stocktwits_posts = db["stocktwits_posts"]
+analytics_snapshots = db["analytics_snapshots"]
 
 
 def ensure_indexes():
@@ -24,7 +25,6 @@ def ensure_indexes():
     headlines.create_index([("securities.exchange", ASCENDING)])
     headlines.create_index([("securities.symbol", ASCENDING)])
     headlines.create_index([("published_at", ASCENDING)],expireAfterSeconds=48 * 60 * 60,name="headlines_48hr_ttl")
-
     rss_feeds.create_index([("url", ASCENDING)], unique=True)
     keywords.create_index([("word", ASCENDING)], unique=True)
     companies.create_index([("symbol", ASCENDING)],unique=True)
@@ -36,7 +36,13 @@ def ensure_indexes():
     market_data.create_index([("updated_at", DESCENDING)])
     stocktwits_posts.create_index([("message_id", ASCENDING),("symbol", ASCENDING),],unique=True)
     stocktwits_posts.create_index([("symbol", ASCENDING),("created_at", DESCENDING),])
-    stocktwits_posts.create_index([("created_at", ASCENDING)],expireAfterSeconds=48 * 60 * 60, name="stocktwits_48hr_ttl")
+    stocktwits_posts.create_index(
+        [("created_at", ASCENDING)],
+        expireAfterSeconds=48 * 60 * 60,
+        name="stocktwits_48hr_ttl"
+    )
+    analytics_snapshots.create_index([("symbol", ASCENDING), ("timestamp", ASCENDING),],unique=True)
+    analytics_snapshots.create_index([("timestamp", ASCENDING)], expireAfterSeconds= 48 * 60 * 60, name="analytics_48hr_ttl")
 
 
 def ping_database():

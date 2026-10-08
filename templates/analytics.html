@@ -1,0 +1,2531 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        Stock Analytics
+    </title>
+
+
+    <!-- Chart.js -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/chart.js">
+    </script>
+
+
+    <style>
+
+        /* =========================================
+           PAGE
+        ========================================= */
+
+        body {
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            max-width:
+                1450px;
+
+            margin:
+                25px auto;
+
+            padding:
+                0 20px;
+
+            background:
+                #17191b;
+
+            color:
+                #f1f1f1;
+        }
+
+
+        h1 {
+
+            margin-bottom:
+                5px;
+        }
+
+
+        .sub {
+
+            color:
+                #aaa;
+
+            margin-bottom:
+                20px;
+        }
+
+
+        /* =========================================
+           NEWS / ANALYTICS PAGE SWITCHER
+        ========================================= */
+
+        .view-switcher {
+
+            display:
+                flex;
+
+            gap:
+                10px;
+
+            margin:
+                15px 0 20px 0;
+        }
+
+
+        .view-tab {
+
+            display:
+                inline-block;
+
+            padding:
+                10px 16px;
+
+            border-radius:
+                6px;
+
+            text-decoration:
+                none;
+
+            font-weight:
+                bold;
+
+            background:
+                #444;
+
+            color:
+                white;
+
+            border:
+                1px solid #555;
+        }
+
+
+        .view-tab:hover {
+
+            background:
+                #555;
+        }
+
+
+        .view-tab.active {
+
+            background:
+                #1f6feb;
+
+            border-color:
+                #1f6feb;
+        }
+
+
+        /* =========================================
+           FILTERS
+        ========================================= */
+
+        .stock-filters {
+
+            margin:
+                20px 0 30px 0;
+
+            padding:
+                15px 18px;
+
+            background:
+                #202225;
+
+            border-radius:
+                7px;
+        }
+
+
+        .filter-form {
+
+            display:
+                flex;
+
+            align-items:
+                end;
+
+            gap:
+                22px;
+
+            flex-wrap:
+                wrap;
+        }
+
+
+        .filter-group {
+
+            display:
+                flex;
+
+            flex-direction:
+                column;
+
+            gap:
+                6px;
+        }
+
+
+        .filter-group label {
+
+            font-size:
+                0.85rem;
+
+            font-weight:
+                bold;
+        }
+
+
+        .filter-group select {
+
+            background:
+                #303337;
+
+            color:
+                white;
+
+            border:
+                1px solid #555;
+
+            border-radius:
+                5px;
+
+            padding:
+                8px 10px;
+
+            min-width:
+                210px;
+        }
+
+
+        .clear-filters {
+
+            padding:
+                8px 14px;
+
+            text-decoration:
+                none;
+
+            background:
+                #4a4a4a;
+
+            color:
+                white;
+
+            border-radius:
+                5px;
+
+            font-weight:
+                bold;
+        }
+
+
+        .clear-filters:hover {
+
+            background:
+                #5a5a5a;
+        }
+
+
+        /* =========================================
+           STOCK CARD
+        ========================================= */
+
+        .analytics-stock {
+
+            margin:
+                18px 0;
+
+            padding:
+                14px 16px;
+
+            background:
+                #20242a;
+
+            border:
+                1px solid #414750;
+
+            border-radius:
+                5px;
+        }
+
+
+        .stock-heading {
+
+            display:
+                flex;
+
+            align-items:
+                baseline;
+
+            gap:
+                12px;
+
+            margin-bottom:
+                12px;
+        }
+
+
+        .stock-symbol {
+
+            font-size:
+                1.45rem;
+
+            font-weight:
+                bold;
+        }
+
+
+        .stock-company {
+
+            color:
+                #b5bac1;
+
+            font-size:
+                1rem;
+        }
+
+
+        /* =========================================
+           CHART + SIDE PANEL
+        ========================================= */
+
+        .analytics-layout {
+
+            display:
+                grid;
+
+            grid-template-columns:
+                minmax(0, 1fr)
+                235px;
+
+            gap:
+                12px;
+        }
+
+
+        .chart-box {
+
+            position:
+                relative;
+
+            height:
+                380px;
+
+            background:
+                #15191e;
+
+            border:
+                1px solid #363c44;
+
+            border-radius:
+                4px;
+
+            padding:
+                8px 10px 4px 8px;
+        }
+
+
+        .side-panel {
+
+            background:
+                #191d22;
+
+            border:
+                1px solid #3a4048;
+
+            border-radius:
+                4px;
+
+            padding:
+                12px 14px;
+        }
+
+
+        .metric {
+
+            padding:
+                11px 0;
+
+            border-bottom:
+                1px solid #333941;
+        }
+
+
+        .metric:last-child {
+
+            border-bottom:
+                none;
+        }
+
+
+        .metric-label {
+
+            color:
+                #969da7;
+
+            font-size:
+                0.8rem;
+        }
+
+
+        .metric-value {
+
+            margin-top:
+                4px;
+
+            font-size:
+                1.1rem;
+
+            font-weight:
+                bold;
+        }
+
+
+        .positive {
+
+            color:
+                #4ade80;
+        }
+
+
+        .negative {
+
+            color:
+                #ff6b6b;
+        }
+
+
+        .neutral {
+
+            color:
+                #ddd;
+        }
+
+
+        /* =========================================
+           NEWS LIST
+        ========================================= */
+
+        .analytics-news {
+
+            margin-top:
+                14px;
+
+            padding-top:
+                8px;
+
+            border-top:
+                1px solid #3d434a;
+        }
+
+
+        .analytics-news h4 {
+
+            font-size:
+                0.95rem;
+
+            margin:
+                5px 0 7px 0;
+        }
+
+
+        .analytics-news-row {
+
+            display:
+                grid;
+
+            grid-template-columns:
+                135px
+                minmax(0, 1fr)
+                110px;
+
+            gap:
+                10px;
+
+            padding:
+                5px 4px;
+
+            border-bottom:
+                1px solid #30343a;
+
+            align-items:
+                center;
+
+            font-size:
+                0.82rem;
+        }
+
+
+        .analytics-news-row:last-child {
+
+            border-bottom:
+                none;
+        }
+
+
+        .news-time {
+
+            color:
+                #969da7;
+
+            font-size:
+                0.78rem;
+        }
+
+
+        .news-heading {
+
+            overflow:
+                hidden;
+
+            text-overflow:
+                ellipsis;
+
+            white-space:
+                nowrap;
+        }
+
+
+        .analytics-news-row a {
+
+            color:
+                #46a6ff;
+
+            text-decoration:
+                none;
+        }
+
+
+        .analytics-news-row a:hover {
+
+            text-decoration:
+                underline;
+        }
+
+
+        .news-sentiment {
+
+            font-weight:
+                bold;
+
+            text-align:
+                right;
+
+            white-space:
+                nowrap;
+        }
+
+
+        .bullish {
+
+            color:
+                #4ade80;
+        }
+
+
+        .bearish {
+
+            color:
+                #ff6b6b;
+        }
+
+
+        .news-neutral {
+
+            color:
+                #d0d0d0;
+        }
+
+
+        /* =========================================
+           ERROR
+        ========================================= */
+
+        .error {
+
+            background:
+                #4c2020;
+
+            padding:
+                12px;
+
+            margin:
+                15px 0;
+
+            border-radius:
+                6px;
+        }
+
+
+        /* =========================================
+           MOBILE
+        ========================================= */
+
+        @media (
+            max-width: 900px
+        ) {
+
+            .analytics-layout {
+
+                grid-template-columns:
+                    1fr;
+            }
+
+
+            .analytics-news-row {
+
+                grid-template-columns:
+                    1fr;
+            }
+
+
+            .news-sentiment {
+
+                text-align:
+                    left;
+            }
+
+
+            .chart-box {
+
+                height:
+                    330px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =========================================
+         TITLE
+    ========================================= -->
+
+    <h1>
+        Stock Market Analytical View
+    </h1>
+
+
+    <p class="sub">
+        15-minute analytics built from 3-minute collection snapshots.
+    </p>
+
+
+    <!-- =========================================
+         PAGE SWITCHER
+    ========================================= -->
+
+    <div class="view-switcher">
+
+        <a
+            href="{{ url_for(
+                'home',
+                market_cap=market_cap_filter,
+                volume=volume_filter,
+                sort=sort_by
+            ) }}"
+            class="view-tab"
+        >
+            News View
+        </a>
+
+
+        <a
+            href="{{ url_for(
+                'analytical_view',
+                market_cap=market_cap_filter,
+                volume=volume_filter,
+                sort=sort_by
+            ) }}"
+            class="view-tab active"
+        >
+            Analytical View
+        </a>
+
+    </div>
+
+
+    <!-- =========================================
+         ERROR
+    ========================================= -->
+
+    {% if error %}
+
+        <div class="error">
+            {{ error }}
+        </div>
+
+    {% endif %}
+
+
+    <!-- =========================================
+         FILTERS
+    ========================================= -->
+
+    <div class="stock-filters">
+
+        <form
+            method="get"
+            action="{{ url_for('analytical_view') }}"
+            class="filter-form"
+        >
+
+
+            <!-- MARKET CAP -->
+
+            <div class="filter-group">
+
+                <label for="market_cap">
+                    Market Cap
+                </label>
+
+
+                <select
+                    name="market_cap"
+                    id="market_cap"
+                    onchange="this.form.submit()"
+                >
+
+                    <option
+                        value="any"
+                        {% if market_cap_filter == 'any' %}
+                            selected
+                        {% endif %}
+                    >
+                        Any
+                    </option>
+
+
+                    <option
+                        value="mega"
+                        {% if market_cap_filter == 'mega' %}
+                            selected
+                        {% endif %}
+                    >
+                        Mega ($200B+)
+                    </option>
+
+
+                    <option
+                        value="large"
+                        {% if market_cap_filter == 'large' %}
+                            selected
+                        {% endif %}
+                    >
+                        Large ($10B - $200B)
+                    </option>
+
+
+                    <option
+                        value="mid"
+                        {% if market_cap_filter == 'mid' %}
+                            selected
+                        {% endif %}
+                    >
+                        Mid ($2B - $10B)
+                    </option>
+
+
+                    <option
+                        value="small"
+                        {% if market_cap_filter == 'small' %}
+                            selected
+                        {% endif %}
+                    >
+                        Small ($300M - $2B)
+                    </option>
+
+
+                    <option
+                        value="micro"
+                        {% if market_cap_filter == 'micro' %}
+                            selected
+                        {% endif %}
+                    >
+                        Micro ($50M - $300M)
+                    </option>
+
+
+                    <option
+                        value="nano"
+                        {% if market_cap_filter == 'nano' %}
+                            selected
+                        {% endif %}
+                    >
+                        Nano (Under $50M)
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- VOLUME -->
+
+            <div class="filter-group">
+
+                <label for="volume">
+                    Trading Volume
+                </label>
+
+
+                <select
+                    name="volume"
+                    id="volume"
+                    onchange="this.form.submit()"
+                >
+
+                    <option
+                        value="any"
+                        {% if volume_filter == 'any' %}
+                            selected
+                        {% endif %}
+                    >
+                        Any
+                    </option>
+
+
+                    <option
+                        value="10m_plus"
+                        {% if volume_filter == '10m_plus' %}
+                            selected
+                        {% endif %}
+                    >
+                        10M+
+                    </option>
+
+
+                    <option
+                        value="5m_plus"
+                        {% if volume_filter == '5m_plus' %}
+                            selected
+                        {% endif %}
+                    >
+                        5M+
+                    </option>
+
+
+                    <option
+                        value="1m_plus"
+                        {% if volume_filter == '1m_plus' %}
+                            selected
+                        {% endif %}
+                    >
+                        1M+
+                    </option>
+
+
+                    <option
+                        value="500k_plus"
+                        {% if volume_filter == '500k_plus' %}
+                            selected
+                        {% endif %}
+                    >
+                        500K+
+                    </option>
+
+
+                    <option
+                        value="100k_plus"
+                        {% if volume_filter == '100k_plus' %}
+                            selected
+                        {% endif %}
+                    >
+                        100K+
+                    </option>
+
+
+                    <option
+                        value="under_100k"
+                        {% if volume_filter == 'under_100k' %}
+                            selected
+                        {% endif %}
+                    >
+                        Under 100K
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- SORT -->
+
+            <div class="filter-group">
+
+                <label for="sort">
+                    Sort By
+                </label>
+
+
+                <select
+                    name="sort"
+                    id="sort"
+                    onchange="this.form.submit()"
+                >
+
+                    <option
+                        value="default"
+                        {% if sort_by == 'default' %}
+                            selected
+                        {% endif %}
+                    >
+                        Default
+                    </option>
+
+
+                    <option
+                        value="st_density_high"
+                        {% if sort_by == 'st_density_high' %}
+                            selected
+                        {% endif %}
+                    >
+                        ST Density: High → Low
+                    </option>
+
+
+                    <option
+                        value="st_density_low"
+                        {% if sort_by == 'st_density_low' %}
+                            selected
+                        {% endif %}
+                    >
+                        ST Density: Low → High
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- CLEAR -->
+
+            <a
+                href="{{ url_for('analytical_view') }}"
+                class="clear-filters"
+            >
+                Clear Filters
+            </a>
+
+
+        </form>
+
+    </div>
+
+
+    <!-- =========================================
+         STOCKS
+    ========================================= -->
+
+    {% if tickers %}
+
+
+        {% for ticker in tickers %}
+
+
+            <div
+                class="analytics-stock"
+                data-symbol="{{ ticker.symbol }}"
+            >
+
+
+                <!-- STOCK NAME -->
+
+                <div class="stock-heading">
+
+                    <span class="stock-symbol">
+                        {{ ticker.symbol }}
+                    </span>
+
+                    <span class="stock-company">
+                        {{ ticker.company_name }}
+                    </span>
+
+                </div>
+
+
+                <!-- GRAPH + SIDE PANEL -->
+
+                <div class="analytics-layout">
+
+
+                    <!-- GRAPH -->
+
+                    <div class="chart-box">
+
+                        <canvas
+                            class="analytics-chart">
+                        </canvas>
+
+                    </div>
+
+
+                    <!-- SIDE PANEL -->
+
+                    <div class="side-panel">
+
+
+                        <!-- PRICE -->
+
+                        <div class="metric">
+
+                            <div class="metric-label">
+                                Current Price
+                            </div>
+
+
+                            <div class="metric-value">
+
+                                {% if ticker.price is not none %}
+
+                                    ${{ "%.2f" | format(
+                                        ticker.price
+                                    ) }}
+
+                                {% else %}
+
+                                    N/A
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- CHANGE -->
+
+                        <div class="metric">
+
+                            <div class="metric-label">
+                                Change
+                            </div>
+
+
+                            <div
+                                class="
+                                    metric-value
+
+                                    {% if ticker.change_percent is not none %}
+
+                                        {% if ticker.change_percent > 0 %}
+                                            positive
+
+                                        {% elif ticker.change_percent < 0 %}
+                                            negative
+
+                                        {% else %}
+                                            neutral
+
+                                        {% endif %}
+
+                                    {% endif %}
+                                "
+                            >
+
+                                {% if ticker.change_percent is not none %}
+
+                                    {% if ticker.change_percent > 0 %}
+                                        +
+                                    {% endif %}
+
+                                    {{ "%.2f" | format(
+                                        ticker.change_percent
+                                    ) }}%
+
+                                {% else %}
+
+                                    N/A
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ST SENTIMENT -->
+
+                        <div class="metric">
+
+                            <div class="metric-label">
+                                ST Sentiment
+                            </div>
+
+
+                            <div class="metric-value">
+
+                                {% if ticker.stocktwits_sentiment is not none %}
+
+                                    {% if ticker.stocktwits_sentiment > 0 %}
+                                        +
+                                    {% endif %}
+
+                                    {{ "%.2f" | format(
+                                        ticker.stocktwits_sentiment
+                                    ) }}
+
+                                {% else %}
+
+                                    N/A
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ST DENSITY -->
+
+                        <div class="metric">
+
+                            <div class="metric-label">
+                                ST Density
+                            </div>
+
+
+                            <div class="metric-value">
+
+                                {{ ticker.stocktwits_density }}/hr
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+
+                <!-- =========================================
+                     NEWS
+                ========================================= -->
+
+                <div class="analytics-news">
+
+                    <h4>
+                        News
+                    </h4>
+
+
+                    {% for item in ticker.news_items %}
+
+
+                        <div class="analytics-news-row">
+
+
+                            <!-- TIME -->
+
+                            <div class="news-time">
+
+                                {{ item.published_at }}
+
+                            </div>
+
+
+                            <!-- HEADLINE -->
+
+                            <div class="news-heading">
+
+                                {% if item.link %}
+
+                                    <a
+                                        href="{{ item.link }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        {{ item.title }}
+                                    </a>
+
+                                {% else %}
+
+                                    {{ item.title }}
+
+                                {% endif %}
+
+                            </div>
+
+
+                            <!-- SENTIMENT -->
+
+                            <div
+                                class="
+                                    news-sentiment
+
+                                    {% if item.sentiment_label == 'Bullish' %}
+
+                                        bullish
+
+                                    {% elif item.sentiment_label == 'Bearish' %}
+
+                                        bearish
+
+                                    {% else %}
+
+                                        news-neutral
+
+                                    {% endif %}
+                                "
+                            >
+
+                                {% if item.sentiment_label %}
+
+                                    {{ item.sentiment_label }}
+
+                                    {% if item.sentiment_score == 1 %}
+
+                                        (+1)
+
+                                    {% elif item.sentiment_score == -1 %}
+
+                                        (-1)
+
+                                    {% else %}
+
+                                        (0)
+
+                                    {% endif %}
+
+                                {% else %}
+
+                                    Not analyzed
+
+                                {% endif %}
+
+                            </div>
+
+
+                        </div>
+
+
+                    {% endfor %}
+
+
+                </div>
+
+
+            </div>
+
+
+        {% endfor %}
+
+
+    {% else %}
+
+
+        <p>
+            No stocks match the current filters.
+        </p>
+
+
+    {% endif %}
+
+
+    <!-- =========================================
+         CHART JAVASCRIPT
+    ========================================= -->
+    <script>
+
+        /*
+         * Keep track of charts that
+         * have already been loaded.
+         */
+
+        const loadedCharts =
+            new WeakSet();
+
+
+        /*
+         * Find the 3-minute observation
+         * closest to a news timestamp.
+         */
+
+        function findNearestPointIndex(
+            points,
+            targetTimestamp
+        ) {
+
+            if (!points.length) {
+
+                return -1;
+            }
+
+
+            const target =
+                new Date(
+                    targetTimestamp
+                ).getTime();
+
+
+            let bestIndex = 0;
+
+            let bestDifference =
+                Infinity;
+
+
+            points.forEach(
+                (point, index) => {
+
+                    const pointTime =
+                        new Date(
+                            point.timestamp
+                        ).getTime();
+
+
+                    const difference =
+                        Math.abs(
+                            pointTime
+                            - target
+                        );
+
+
+                    if (
+                        difference
+                        < bestDifference
+                    ) {
+
+                        bestDifference =
+                            difference;
+
+                        bestIndex =
+                            index;
+                    }
+
+                }
+            );
+
+
+            return bestIndex;
+        }
+
+
+        /*
+         * Load a single stock chart.
+         */
+
+        async function loadChart(
+            card
+        ) {
+
+
+            if (
+                loadedCharts.has(
+                    card
+                )
+            ) {
+
+                return;
+            }
+
+
+            loadedCharts.add(
+                card
+            );
+
+
+            const symbol =
+                card.dataset.symbol;
+
+
+            const canvas =
+                card.querySelector(
+                    ".analytics-chart"
+                );
+
+
+            try {
+
+
+                const response =
+                    await fetch(
+
+                        "/api/analytics/"
+                        + encodeURIComponent(
+                            symbol
+                        ),
+
+                        {
+                            cache:
+                                "no-store"
+                        }
+
+                    );
+
+
+                if (
+                    !response.ok
+                ) {
+
+                    throw new Error(
+
+                        "Analytics API HTTP "
+                        + response.status
+
+                    );
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                const points =
+                    data.points
+                    || [];
+
+
+                /*
+                 * ==========================================
+                 * RAW THREE-MINUTE OBSERVATIONS
+                 * ==========================================
+                 */
+
+                const labels =
+                    points.map(
+                        point =>
+                            point.hour_minute
+                    );
+
+
+                const prices =
+                    points.map(
+                        point =>
+                            point.price
+                    );
+
+
+                const sentiments =
+                    points.map(
+                        point =>
+                            point
+                            .stocktwits_sentiment
+                    );
+
+
+                const densities =
+                    points.map(
+                        point =>
+                            point
+                            .stocktwits_density
+                    );
+
+
+                /*
+                 * ==========================================
+                 * NEWS MARKERS
+                 *
+                 * Marker sits ON the ST Density line.
+                 * ==========================================
+                 */
+
+                const newsMarkers =
+                    Array(
+                        points.length
+                    ).fill(
+                        null
+                    );
+
+
+                const newsByIndex = {};
+
+
+                (
+                    data.news
+                    || []
+                ).forEach(
+                    article => {
+
+
+                        const index =
+                            findNearestPointIndex(
+
+                                points,
+
+                                article.timestamp
+
+                            );
+
+
+                        if (
+                            index < 0
+                        ) {
+
+                            return;
+                        }
+
+
+                        /*
+                         * Get density value at
+                         * nearest 3-minute point.
+                         */
+
+                        let densityValue =
+                            densities[
+                                index
+                            ];
+
+
+                        if (
+                            densityValue === null
+                            ||
+                            densityValue === undefined
+                        ) {
+
+                            densityValue = 0;
+                        }
+
+
+                        /*
+                         * The triangle now sits
+                         * directly on density line.
+                         */
+
+                        newsMarkers[
+                            index
+                        ] =
+                            densityValue;
+
+
+                        if (
+                            !newsByIndex[
+                                index
+                            ]
+                        ) {
+
+                            newsByIndex[
+                                index
+                            ] = [];
+                        }
+
+
+                        newsByIndex[
+                            index
+                        ].push(
+                            article
+                        );
+
+                    }
+                );
+
+
+                /*
+                 * ==========================================
+                 * CHART
+                 * ==========================================
+                 */
+
+                new Chart(
+
+                    canvas,
+
+                    {
+
+                        type:
+                            "line",
+
+
+                        data: {
+
+
+                            labels:
+                                labels,
+
+
+                            datasets: [
+
+
+                                /*
+                                 * ==========================
+                                 * STOCK PRICE
+                                 * ==========================
+                                 */
+
+                                {
+
+                                    label:
+                                        "Stock Price",
+
+                                    data:
+                                        prices,
+
+                                    yAxisID:
+                                        "yPrice",
+
+                                    borderColor:
+                                        "#35a7ff",
+
+                                    backgroundColor:
+                                        "transparent",
+
+                                    borderWidth:
+                                        2.5,
+
+                                    showLine:
+                                        true,
+
+                                    pointRadius:
+                                        2,
+
+                                    pointHoverRadius:
+                                        5,
+
+                                    pointBackgroundColor:
+                                        "#35a7ff",
+
+                                    pointBorderColor:
+                                        "#35a7ff",
+
+                                    tension:
+                                        0.12,
+
+                                    spanGaps:
+                                        true,
+
+                                    fill:
+                                        false,
+
+                                    order:
+                                        1,
+                                },
+
+
+                                /*
+                                 * ==========================
+                                 * STOCKTWITS SENTIMENT
+                                 * ==========================
+                                 */
+
+                                {
+
+                                    label:
+                                        "ST Sentiment",
+
+                                    data:
+                                        sentiments,
+
+                                    yAxisID:
+                                        "ySentiment",
+
+                                    borderColor:
+                                        "#ff5c8a",
+
+                                    backgroundColor:
+                                        "transparent",
+
+                                    borderWidth:
+                                        1.8,
+
+                                    showLine:
+                                        true,
+
+                                    pointRadius:
+                                        1.5,
+
+                                    pointHoverRadius:
+                                        5,
+
+                                    pointBackgroundColor:
+                                        "#ff5c8a",
+
+                                    pointBorderColor:
+                                        "#ff5c8a",
+
+                                    tension:
+                                        0.12,
+
+                                    spanGaps:
+                                        true,
+
+                                    fill:
+                                        false,
+
+                                    order:
+                                        2,
+                                },
+
+
+                                /*
+                                 * ==========================
+                                 * STOCKTWITS DENSITY
+                                 *
+                                 * LINE — NOT BAR GRAPH
+                                 * ==========================
+                                 */
+
+                                {
+
+                                    label:
+                                        "ST Density",
+
+                                    data:
+                                        densities,
+
+                                    yAxisID:
+                                        "yDensity",
+
+                                    borderColor:
+                                        "#c78843",
+
+                                    backgroundColor:
+                                        "transparent",
+
+                                    borderWidth:
+                                        1.8,
+
+                                    showLine:
+                                        true,
+
+                                    pointRadius:
+                                        1.5,
+
+                                    pointHoverRadius:
+                                        5,
+
+                                    pointBackgroundColor:
+                                        "#c78843",
+
+                                    pointBorderColor:
+                                        "#c78843",
+
+                                    tension:
+                                        0.12,
+
+                                    spanGaps:
+                                        true,
+
+                                    fill:
+                                        false,
+
+                                    order:
+                                        3,
+                                },
+
+
+                                /*
+                                 * ==========================
+                                 * NEWS
+                                 *
+                                 * Yellow triangles on
+                                 * ST Density line.
+                                 * ==========================
+                                 */
+
+                                {
+
+                                    label:
+                                        "News",
+
+                                    data:
+                                        newsMarkers,
+
+                                    yAxisID:
+                                        "yDensity",
+
+                                    borderColor:
+                                        "transparent",
+
+                                    backgroundColor:
+                                        "#f4c542",
+
+                                    showLine:
+                                        false,
+
+                                    pointStyle:
+                                        "triangle",
+
+                                    pointRadius:
+                                        7,
+
+                                    pointHoverRadius:
+                                        10,
+
+                                    pointBackgroundColor:
+                                        "#f4c542",
+
+                                    pointBorderColor:
+                                        "#ffe57a",
+
+                                    pointBorderWidth:
+                                        1,
+
+                                    order:
+                                        0,
+                                },
+
+
+                            ]
+
+                        },
+
+
+                        options: {
+
+
+                            responsive:
+                                true,
+
+
+                            maintainAspectRatio:
+                                false,
+
+
+                            animation:
+                                false,
+
+
+                            interaction: {
+
+                                mode:
+                                    "index",
+
+                                intersect:
+                                    false,
+
+                            },
+
+
+                            /*
+                             * ==================================
+                             * LEGEND / TOOLTIP
+                             * ==================================
+                             */
+
+                            plugins: {
+
+
+                                legend: {
+
+
+                                    labels: {
+
+                                        color:
+                                            "#d7d7d7",
+
+                                        boxWidth:
+                                            30,
+
+                                        boxHeight:
+                                            7,
+
+                                        padding:
+                                            14,
+                                    },
+
+                                },
+
+
+                                tooltip: {
+
+
+                                    callbacks: {
+
+
+                                        /*
+                                         * Price tooltip
+                                         */
+
+                                        label:
+                                            function(
+                                                context
+                                            ) {
+
+
+                                                const label =
+                                                    context
+                                                    .dataset
+                                                    .label
+                                                    || "";
+
+
+                                                const value =
+                                                    context
+                                                    .parsed
+                                                    .y;
+
+
+                                                if (
+                                                    value === null
+                                                    ||
+                                                    value === undefined
+                                                ) {
+
+                                                    return;
+                                                }
+
+
+                                                if (
+                                                    label
+                                                    ===
+                                                    "Stock Price"
+                                                ) {
+
+                                                    return (
+
+                                                        "Stock Price: $"
+                                                        +
+                                                        Number(
+                                                            value
+                                                        ).toFixed(
+                                                            2
+                                                        )
+
+                                                    );
+
+                                                }
+
+
+                                                if (
+                                                    label
+                                                    ===
+                                                    "ST Sentiment"
+                                                ) {
+
+                                                    return (
+
+                                                        "ST Sentiment: "
+                                                        +
+                                                        Number(
+                                                            value
+                                                        ).toFixed(
+                                                            2
+                                                        )
+
+                                                    );
+
+                                                }
+
+
+                                                if (
+                                                    label
+                                                    ===
+                                                    "ST Density"
+                                                ) {
+
+                                                    return (
+
+                                                        "ST Density: "
+                                                        +
+                                                        Number(
+                                                            value
+                                                        ).toFixed(
+                                                            1
+                                                        )
+                                                        +
+                                                        "/hr"
+
+                                                    );
+
+                                                }
+
+
+                                                return;
+                                            },
+
+
+                                        /*
+                                         * Add news headlines
+                                         * for this observation.
+                                         */
+
+                                        afterBody:
+                                            function(
+                                                contexts
+                                            ) {
+
+
+                                                if (
+                                                    !contexts.length
+                                                ) {
+
+                                                    return;
+                                                }
+
+
+                                                const index =
+                                                    contexts[
+                                                        0
+                                                    ].dataIndex;
+
+
+                                                const articles =
+                                                    newsByIndex[
+                                                        index
+                                                    ];
+
+
+                                                if (
+                                                    !articles
+                                                    ||
+                                                    !articles.length
+                                                ) {
+
+                                                    return;
+                                                }
+
+
+                                                const lines = [
+
+                                                    "",
+
+                                                    "NEWS:"
+
+                                                ];
+
+
+                                                articles
+                                                    .forEach(
+                                                        article => {
+
+
+                                                            let sentiment =
+                                                                article
+                                                                .sentiment_label
+                                                                ||
+                                                                "N/A";
+
+
+                                                            if (
+                                                                article
+                                                                .sentiment_score
+                                                                === 1
+                                                            ) {
+
+                                                                sentiment +=
+                                                                    " (+1)";
+
+                                                            }
+
+                                                            else if (
+                                                                article
+                                                                .sentiment_score
+                                                                === -1
+                                                            ) {
+
+                                                                sentiment +=
+                                                                    " (-1)";
+
+                                                            }
+
+                                                            else if (
+                                                                article
+                                                                .sentiment_score
+                                                                === 0
+                                                            ) {
+
+                                                                sentiment +=
+                                                                    " (0)";
+
+                                                            }
+
+
+                                                            lines.push(
+
+                                                                article.title
+
+                                                                +
+                                                                " — "
+
+                                                                +
+                                                                sentiment
+
+                                                            );
+
+                                                        }
+                                                    );
+
+
+                                                return lines;
+                                            },
+
+                                    }
+
+                                }
+
+                            },
+
+
+                            /*
+                             * ==================================
+                             * AXES
+                             * ==================================
+                             */
+
+                            scales: {
+
+
+                                /*
+                                 * ==================================
+                                 * X AXIS
+                                 *
+                                 * DATA = EVERY 3 MINUTES
+                                 *
+                                 * LABELS = EVERY 15 MINUTES
+                                 * ==================================
+                                 */
+
+                                x: {
+
+
+                                    ticks: {
+
+
+                                        color:
+                                            "#9aa0a6",
+
+
+                                        autoSkip:
+                                            false,
+
+
+                                        maxRotation:
+                                            0,
+
+
+                                        callback:
+                                            function(
+                                                value,
+                                                index
+                                            ) {
+
+
+                                                const point =
+                                                    points[
+                                                        index
+                                                    ];
+
+
+                                                if (
+                                                    !point
+                                                ) {
+
+                                                    return "";
+                                                }
+
+
+                                                /*
+                                                 * Only show visible
+                                                 * label at:
+                                                 *
+                                                 * :00
+                                                 * :15
+                                                 * :30
+                                                 * :45
+                                                 */
+
+                                                if (
+                                                    point.minute
+                                                    % 15
+                                                    === 0
+                                                ) {
+
+                                                    return (
+                                                        point
+                                                        .hour_minute
+                                                    );
+
+                                                }
+
+
+                                                /*
+                                                 * Still graph the point,
+                                                 * just don't print label.
+                                                 */
+
+                                                return "";
+
+                                            },
+
+                                    },
+
+
+                                    grid: {
+
+
+                                        /*
+                                         * Draw vertical grid line
+                                         * only every 15 minutes.
+                                         */
+
+                                        color:
+                                            function(
+                                                context
+                                            ) {
+
+
+                                                const index =
+                                                    context.index;
+
+
+                                                const point =
+                                                    points[
+                                                        index
+                                                    ];
+
+
+                                                if (
+                                                    point
+                                                    &&
+                                                    point.minute
+                                                    % 15
+                                                    === 0
+                                                ) {
+
+                                                    return (
+                                                        "rgba(100,105,115,0.22)"
+                                                    );
+
+                                                }
+
+
+                                                return (
+                                                    "rgba(0,0,0,0)"
+                                                );
+
+                                            },
+
+                                    },
+
+
+                                    border: {
+
+                                        color:
+                                            "#343940",
+
+                                    },
+
+                                },
+
+
+                                /*
+                                 * ==================================
+                                 * STOCK PRICE
+                                 * ==================================
+                                 */
+
+                                yPrice: {
+
+
+                                    type:
+                                        "linear",
+
+
+                                    position:
+                                        "left",
+
+
+                                    grace:
+                                        "5%",
+
+
+                                    ticks: {
+
+
+                                        color:
+                                            "#d0d4da",
+
+
+                                        callback:
+                                            function(
+                                                value
+                                            ) {
+
+                                                return (
+
+                                                    "$"
+
+                                                    +
+
+                                                    Number(
+                                                        value
+                                                    ).toFixed(
+                                                        2
+                                                    )
+
+                                                );
+
+                                            },
+
+                                    },
+
+
+                                    grid: {
+
+                                        color:
+                                            "rgba(90,95,105,0.20)",
+
+                                    },
+
+
+                                    border: {
+
+                                        color:
+                                            "#343940",
+
+                                    },
+
+                                },
+
+
+                                /*
+                                 * ==================================
+                                 * STOCKTWITS SENTIMENT
+                                 *
+                                 * -1 bearish
+                                 *  0 neutral
+                                 * +1 bullish
+                                 * ==================================
+                                 */
+
+                                ySentiment: {
+
+
+                                    type:
+                                        "linear",
+
+
+                                    position:
+                                        "right",
+
+
+                                    min:
+                                        -1,
+
+
+                                    max:
+                                        1,
+
+
+                                    ticks: {
+
+
+                                        color:
+                                            "#ff7a9e",
+
+
+                                        stepSize:
+                                            0.5,
+
+                                    },
+
+
+                                    grid: {
+
+                                        drawOnChartArea:
+                                            false,
+
+                                    },
+
+
+                                    border: {
+
+                                        color:
+                                            "#343940",
+
+                                    },
+
+                                },
+
+
+                                /*
+                                 * ==================================
+                                 * STOCKTWITS DENSITY
+                                 * ==================================
+                                 */
+
+                                yDensity: {
+
+
+                                    type:
+                                        "linear",
+
+
+                                    position:
+                                        "right",
+
+
+                                    beginAtZero:
+                                        true,
+
+
+                                    ticks: {
+
+
+                                        color:
+                                            "#c78843",
+
+
+                                        callback:
+                                            function(
+                                                value
+                                            ) {
+
+                                                return (
+                                                    value
+                                                    +
+                                                    "/hr"
+                                                );
+
+                                            },
+
+                                    },
+
+
+                                    grid: {
+
+                                        drawOnChartArea:
+                                            false,
+
+                                    },
+
+
+                                    border: {
+
+                                        color:
+                                            "#343940",
+
+                                    },
+
+                                },
+
+
+                            }
+
+                        }
+
+                    }
+
+                );
+
+
+            }
+
+            catch (
+                error
+            ) {
+
+
+                console.error(
+
+                    "Analytics chart failed:",
+
+                    symbol,
+
+                    error
+
+                );
+
+            }
+
+        }
+
+
+        /*
+         * ==========================================
+         * LAZY LOAD
+         * ==========================================
+         */
+
+        const observer =
+            new IntersectionObserver(
+
+                entries => {
+
+
+                    entries.forEach(
+                        entry => {
+
+
+                            if (
+                                entry.isIntersecting
+                            ) {
+
+
+                                loadChart(
+                                    entry.target
+                                );
+
+
+                                observer.unobserve(
+                                    entry.target
+                                );
+
+                            }
+
+                        }
+                    );
+
+                },
+
+
+                {
+
+                    rootMargin:
+                        "400px",
+
+                }
+
+            );
+
+
+        document
+            .querySelectorAll(
+                ".analytics-stock"
+            )
+            .forEach(
+                card => {
+
+
+                    observer.observe(
+                        card
+                    );
+
+                }
+            );
+
+
+        /*
+         * ==========================================
+         * REFRESH EVERY 3 MINUTES
+         * ==========================================
+         */
+
+        setTimeout(
+
+            function () {
+
+                window.location.reload();
+
+            },
+
+            180000
+
+        );
+
+
+    </script>
+
+
+</body>
+
+</html>

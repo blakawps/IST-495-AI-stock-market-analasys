@@ -14,6 +14,8 @@ from config import RSS_USER_AGENT
 from db import ensure_indexes, headlines, keywords, rss_feeds, companies
 from finviz_client import update_market_data
 from stocktwits_scraper import (collect_stocktwits_for_symbols)
+from news_sentiment import (analyze_news_sentiment)
+from analytics_history import (save_analytics_snapshots)
 
 ticker_resolver = TickerResolver()
 
@@ -302,7 +304,7 @@ def collect_news():
 
     active_keywords = get_active_keywords()
     active_feeds = get_active_feeds()
-    cutoff_time = datetime.now(timezone.utc) - timedelta(days=3)
+    cutoff_time = (datetime.now(timezone.utc) - timedelta(hours=48))
 
     stats = {
         "feeds_checked": 0,
@@ -394,7 +396,7 @@ def collect_news():
             if published_at is None:
                 continue
 
-            # Only accept news from the last 3 days
+            # Only accept news from the last 2 days
             if published_at < cutoff_time:
                 continue
 
@@ -412,6 +414,8 @@ def collect_news():
                 entry,
                 title
             )
+
+
 
             for security in securities:
 
@@ -478,40 +482,130 @@ def collect_news():
             try:
 
                 lookup = {
-                    "headline_hash": headline_hash
+                    "headline_hash":
+                        headline_hash
                 }
 
                 if link:
                     lookup = {
                         "$or": [
-                            {"headline_hash": headline_hash},
-                            {"link": link},
+                            {
+                                "headline_hash":
+                                    headline_hash
+                            },
+                            {
+                                "link":
+                                    link
+                            },
                         ]
                     }
 
+                # Check whether this article
+                # already has AI sentiment.
+                existing_article = (
+                    headlines.find_one(
+                        lookup,
+                        {
+                            "_id": 1,
+                            "news_sentiment": 1,
+                        }
+                    )
+                )
+
+                # Do not run FinBERT again if
+                # sentiment already exists.
+                if (
+                        existing_article
+                        and existing_article.get(
+                    "news_sentiment"
+                )
+                ):
+
+                    sentiment = (
+                        existing_article[
+                            "news_sentiment"
+                        ]
+                    )
+
+                else:
+
+                    sentiment = (
+                        analyze_news_sentiment(
+                            title,
+                            summary
+                        )
+                    )
+
+                    print(
+                        f"NEWS SENTIMENT: "
+                        f"{sentiment['label']} "
+                        f"({sentiment['score']}) "
+                        f"confidence="
+                        f"{sentiment['confidence']:.3f} "
+                        f"| {title}"
+                    )
+
                 result = headlines.update_one(
+
                     lookup,
+
                     {
-                        "$setOnInsert": document,
+                        "$setOnInsert":
+                            document,
 
                         "$set": {
-                            "summary": summary,
-                            "matched_keywords": matched_keywords,
-                            "securities": securities,
+
+                            "summary":
+                                summary,
+
+                            "matched_keywords":
+                                matched_keywords,
+
+                            "securities":
+                                securities,
+
+                            "news_sentiment": {
+
+                                "score":
+                                    sentiment[
+                                        "score"
+                                    ],
+
+                                "label":
+                                    sentiment[
+                                        "label"
+                                    ],
+
+                                "confidence":
+                                    sentiment[
+                                        "confidence"
+                                    ],
+
+                                "model":
+                                    sentiment[
+                                        "model"
+                                    ],
+                            },
                         }
                     },
+
                     upsert=True,
                 )
 
                 if result.upserted_id is not None:
+
                     stats["inserted"] += 1
 
                     print(
-                        f"NEW ARTICLE INSERTED: {title}"
+                        f"NEW ARTICLE INSERTED: "
+                        f"{title}"
                     )
 
                 else:
+
                     stats["duplicates"] += 1
+
+
 
 
             except PyMongoError as exc:
@@ -556,7 +650,42 @@ def collect_news():
             "messages_inserted": 0,
             "errors": [],
         }
+
+    # -----------------------------------------
+    # SAVE ANALYTICS HISTORY SNAPSHOT
+    # -----------------------------------------
+
+    try:
+
+        snapshot_count = (
+            save_analytics_snapshots(
+                collected_symbols
+            )
+        )
+
+        stats[
+            "analytics_snapshots"
+        ] = snapshot_count
+
+        print(
+            f"Saved {snapshot_count} "
+            f"analytics snapshots."
+        )
+
+    except Exception as exc:
+
+        print(
+            f"Analytics snapshot error: "
+            f"{exc}"
+        )
+
+        stats[
+            "analytics_snapshots"
+        ] = 0
+
     return stats
+
+
 
 
 if __name__ == "__main__":

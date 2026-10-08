@@ -15,7 +15,7 @@ from bson.errors import InvalidId
 
 from collector import collect_news
 from config import FLASK_DEBUG, FLASK_HOST, FLASK_PORT
-from db import ensure_indexes, headlines, keywords, ping_database, rss_feeds,companies, market_data, stocktwits_posts
+from db import ensure_indexes, headlines, keywords, ping_database, rss_feeds,companies, market_data, stocktwits_posts, analytics_snapshots
 
 app = Flask(__name__)
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -149,6 +149,7 @@ def scheduler_is_running():
     return False
 
 def serialize_headline(doc):
+    sentiment = (doc.get("news_sentiment") or {})
     published_at = doc.get("published_at")
     collected_at = doc.get("collected_at")
 
@@ -185,17 +186,11 @@ def serialize_headline(doc):
         "summary": doc.get("summary", ""),
         "link": doc.get("link"),
         "source": doc.get("source"),
-
-        "matched_keywords": doc.get(
-            "matched_keywords",
-            []
-        ),
-
-        "securities": doc.get(
-            "securities",
-            []
-        ),
-
+        "sentiment_score":sentiment.get("score"),
+        "sentiment_label":sentiment.get("label"),
+        "sentiment_confidence":sentiment.get("confidence"),
+        "matched_keywords": doc.get("matched_keywords", []),
+        "securities": doc.get("securities", []),
         "published_at": published_display,
         "collected_at": collected_display,
     }
@@ -444,291 +439,679 @@ def get_stocktwits_stats():
 
     return results
 
-@app.get("/")
-def home():
+def build_ticker_list(
+    market_cap_filter,
+    volume_filter,
+    sort_by
+):
 
-    sort_by = request.args.get(
-        "sort",
-        default="default",
-        type=str
+    stocktwits_stats = (
+        get_stocktwits_stats()
     )
 
-    try:
-        stocktwits_stats = (
-            get_stocktwits_stats()
-        )
+    pipeline = [
 
-        market_cap_filter = request.args.get(
-            "market_cap",
-            "any"
-        )
-
-        volume_filter = request.args.get(
-            "volume",
-            "any"
-        )
-
-        pipeline = [
-
-            # Only articles where we actually found
-            # at least one ticker
-            {
-                "$match": {
-                    "securities.0": {
-                        "$exists": True
-                    }
-                }
-            },
-
-            # One row per ticker in each article
-            {
-                "$unwind": "$securities"
-            },
-
-            # Ignore malformed ticker entries
-            {
-                "$match": {
-                    "securities.symbol": {
-                        "$exists": True,
-                        "$ne": ""
-                    }
-                }
-            },
-
-            # Group every article by ticker
-            {
-                "$group": {
-                    "_id": "$securities.symbol",
-
-                    "exchange": {
-                        "$first": "$securities.exchange"
-                    },
-
-                    "article_count": {
-                        "$sum": 1
-                    },
-
-                    "latest_published": {
-                        "$max": "$published_at"
-                    },
-
-                    "latest_collected": {
-                        "$max": "$collected_at"
-                    }
-                }
-            },
-
-            # Newest active ticker first
-            {
-                "$sort": {
-                    "latest_published": -1
+        {
+            "$match": {
+                "securities.0": {
+                    "$exists": True
                 }
             }
-        ]
+        },
 
-        ticker_results = list(
-            headlines.aggregate(pipeline)
+        {
+            "$unwind":
+                "$securities"
+        },
+
+        {
+            "$match": {
+                "securities.symbol": {
+                    "$exists": True,
+                    "$ne": "",
+                }
+            }
+        },
+
+        {
+            "$group": {
+
+                "_id":
+                    "$securities.symbol",
+
+                "exchange": {
+                    "$first":
+                        "$securities.exchange"
+                },
+
+                "article_count": {
+                    "$sum": 1
+                },
+
+                "latest_published": {
+                    "$max":
+                        "$published_at"
+                },
+
+                "latest_collected": {
+                    "$max":
+                        "$collected_at"
+                },
+            }
+        },
+
+        {
+            "$sort": {
+                "latest_published": -1
+            }
+        },
+    ]
+
+    ticker_results = list(
+        headlines.aggregate(
+            pipeline
+        )
+    )
+
+    ticker_list = []
+
+    for ticker in ticker_results:
+
+        symbol = ticker["_id"]
+
+        st = stocktwits_stats.get(
+            symbol,
+            {}
         )
 
-        ticker_list = []
-
-        for ticker in ticker_results:
-
-            symbol = ticker["_id"]
-
-            st = stocktwits_stats.get(
-                symbol,
-                {}
-            )
-
-            st_sentiment = st.get(
-                "sentiment"
-            )
-
-            st_message_count = st.get(
-                "message_count",
-                0
-            )
-
-            st_density = st.get(
-                "density",
-                0
-            )
-
-            st_bullish = st.get(
-                "bullish",
-                0
-            )
-
-            st_bearish = st.get(
-                "bearish",
-                0
-            )
-
-            finviz_data = market_data.find_one(
-                {"symbol": symbol},
+        finviz_data = (
+            market_data.find_one(
+                {
+                    "symbol": symbol
+                },
                 {
                     "_id": 0,
                     "market_cap_millions": 1,
                     "volume": 1,
+                    "price": 1,
+                    "change_percent": 1,
                 }
             )
+            or {}
+        )
 
-            # Use companies collection only to obtain
-            # company name / missing exchange.
-            company = companies.find_one(
-                {"symbol": symbol},
+        company = (
+            companies.find_one(
+                {
+                    "symbol": symbol
+                },
                 {
                     "_id": 0,
                     "company_name": 1,
                     "exchange": 1,
                 }
             )
+            or {}
+        )
 
-            stock_docs = list(
-                headlines.find({
-                    "securities.symbol": symbol
-                })
-                .sort([
-                    ("published_at", -1),
-                    ("collected_at", -1)
-                ])
-                .limit(500)
+        stock_docs = list(
+            headlines.find({
+                "securities.symbol":
+                    symbol
+            })
+            .sort([
+                (
+                    "published_at",
+                    -1
+                ),
+                (
+                    "collected_at",
+                    -1
+                ),
+            ])
+            .limit(500)
+        )
+
+        news_items = [
+            serialize_headline(doc)
+            for doc in stock_docs
+        ]
+
+        market_cap = (
+            finviz_data.get(
+                "market_cap_millions"
             )
+        )
 
-            news_items = [
-                serialize_headline(doc)
-                for doc in stock_docs
-            ]
+        volume = (
+            finviz_data.get(
+                "volume"
+            )
+        )
 
-            company_name = None
-            company_exchange = None
+        if not matches_market_cap_filter(
+            market_cap,
+            market_cap_filter
+        ):
+            continue
 
-            if company:
-                company_name = company.get(
+        if not matches_volume_filter(
+            volume,
+            volume_filter
+        ):
+            continue
+
+        ticker_list.append({
+
+            "symbol":
+                symbol,
+
+            "company_name":
+                company.get(
                     "company_name"
                 )
+                or symbol,
 
-                company_exchange = company.get(
+            "exchange":
+                ticker.get(
                     "exchange"
                 )
-
-            market_cap = None
-            volume = None
-
-            if finviz_data:
-                market_cap = finviz_data.get(
-                    "market_cap_millions"
-                )
-
-                volume = finviz_data.get(
-                    "volume"
-                )
-
-                if not matches_market_cap_filter(
-                        market_cap,
-                        market_cap_filter
-                ):
-                    continue
-
-                if not matches_volume_filter(
-                        volume,
-                        volume_filter
-                ):
-                    continue
-
-            ticker_list.append({
-
-                "stocktwits_sentiment":
-                    st_sentiment,
-
-                "stocktwits_message_count":
-                    st_message_count,
-
-                "stocktwits_density":
-                    st_density,
-
-                "stocktwits_bullish":
-                    st_bullish,
-
-                "stocktwits_bearish":
-                    st_bearish,
-
-                "market_cap": market_cap,
-                "market_cap_display": format_market_cap(
-                    market_cap
+                or company.get(
+                    "exchange"
                 ),
 
-                "volume": volume,
-                "volume_display": format_volume(
-                    volume
-                ),
-
-                "symbol": symbol,
-
-                "news_items": news_items,
-
-                "company_name": (
-                    company_name
-                    or symbol
-                ),
-
-                "exchange": (
-                    ticker.get("exchange")
-                    or company_exchange
-                ),
-
-                "article_count": ticker.get(
+            "article_count":
+                ticker.get(
                     "article_count",
                     0
                 ),
 
-                "latest_published": ticker.get(
+            "latest_published":
+                ticker.get(
                     "latest_published"
                 ),
-            })
 
-            if sort_by == "st_density_high":
+            "news_items":
+                news_items,
 
-                ticker_list.sort(
-                    key=lambda x: x.get(
-                        "stocktwits_density",
-                        0
-                    ),
-                    reverse=True
+            "market_cap":
+                market_cap,
+
+            "market_cap_display":
+                format_market_cap(
+                    market_cap
+                ),
+
+            "volume":
+                volume,
+
+            "volume_display":
+                format_volume(
+                    volume
+                ),
+
+            "price":
+                finviz_data.get(
+                    "price"
+                ),
+
+            "change_percent":
+                finviz_data.get(
+                    "change_percent"
+                ),
+
+            "stocktwits_sentiment":
+                st.get(
+                    "sentiment"
+                ),
+
+            "stocktwits_message_count":
+                st.get(
+                    "message_count",
+                    0
+                ),
+
+            "stocktwits_density":
+                st.get(
+                    "density",
+                    0
+                ),
+
+            "stocktwits_bullish":
+                st.get(
+                    "bullish",
+                    0
+                ),
+
+            "stocktwits_bearish":
+                st.get(
+                    "bearish",
+                    0
+                ),
+        })
+
+    # SORT ONCE AFTER
+    # BUILDING THE WHOLE LIST
+
+    if sort_by == "st_density_high":
+
+        ticker_list.sort(
+            key=lambda x:
+                x.get(
+                    "stocktwits_density",
+                    0
+                ),
+            reverse=True
+        )
+
+    elif sort_by == "st_density_low":
+
+        ticker_list.sort(
+            key=lambda x:
+                x.get(
+                    "stocktwits_density",
+                    0
                 )
+        )
 
-            elif sort_by == "st_density_low":
+    return ticker_list
 
-                ticker_list.sort(
-                    key=lambda x: x.get(
-                        "stocktwits_density",
-                        0
-                    )
-                )
+@app.get("/")
+def home():
 
+    market_cap_filter = (
+        request.args.get(
+            "market_cap",
+            "any"
+        )
+    )
 
+    volume_filter = (
+        request.args.get(
+            "volume",
+            "any"
+        )
+    )
+
+    sort_by = (
+        request.args.get(
+            "sort",
+            "default"
+        )
+    )
+
+    try:
+
+        ticker_list = (
+            build_ticker_list(
+                market_cap_filter,
+                volume_filter,
+                sort_by
+            )
+        )
 
         return render_template(
             "index.html",
+
             tickers=ticker_list,
+
             error=None,
-            scheduler_running=scheduler_is_running(),
-            market_cap_filter=market_cap_filter,
-            volume_filter=volume_filter,
-            sort_by=sort_by,
+
+            scheduler_running=
+                scheduler_is_running(),
+
+            market_cap_filter=
+                market_cap_filter,
+
+            volume_filter=
+                volume_filter,
+
+            sort_by=
+                sort_by,
         )
 
     except PyMongoError as exc:
 
         return render_template(
             "index.html",
+
             tickers=[],
+
             error=str(exc),
-            scheduler_running=scheduler_is_running(),
-            market_cap_filter="any",
-            volume_filter="any",
+
+            scheduler_running=
+                scheduler_is_running(),
+
+            market_cap_filter=
+                market_cap_filter,
+
+            volume_filter=
+                volume_filter,
+
+            sort_by=
+                sort_by,
         ), 500
+
+@app.get("/analytics")
+def analytical_view():
+
+    market_cap_filter = (
+        request.args.get(
+            "market_cap",
+            "any"
+        )
+    )
+
+    volume_filter = (
+        request.args.get(
+            "volume",
+            "any"
+        )
+    )
+
+    sort_by = (
+        request.args.get(
+            "sort",
+            "default"
+        )
+    )
+
+    try:
+
+        ticker_list = (
+            build_ticker_list(
+                market_cap_filter,
+                volume_filter,
+                sort_by
+            )
+        )
+
+        return render_template(
+            "analytics.html",
+
+            tickers=ticker_list,
+
+            error=None,
+
+            scheduler_running=
+                scheduler_is_running(),
+
+            market_cap_filter=
+                market_cap_filter,
+
+            volume_filter=
+                volume_filter,
+
+            sort_by=
+                sort_by,
+        )
+
+    except PyMongoError as exc:
+
+        return render_template(
+            "analytics.html",
+
+            tickers=[],
+
+            error=str(exc),
+
+            scheduler_running=
+                scheduler_is_running(),
+
+            market_cap_filter=
+                market_cap_filter,
+
+            volume_filter=
+                volume_filter,
+
+            sort_by=
+                sort_by,
+        ), 500
+
+@app.get("/api/analytics/<symbol>")
+def analytics_data(symbol):
+
+    symbol = (
+        symbol
+        .strip()
+        .upper()
+    )
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    cutoff = (
+        now
+        - timedelta(hours=48)
+    )
+
+    # ==========================================
+    # RAW 3-MINUTE ANALYTICS SNAPSHOTS
+    # ==========================================
+
+    snapshots = list(
+        analytics_snapshots.find(
+            {
+                "symbol": symbol,
+
+                "timestamp": {
+                    "$gte": cutoff
+                },
+            },
+            {
+                "_id": 0,
+
+                "timestamp": 1,
+
+                "price": 1,
+
+                "change_percent": 1,
+
+                "stocktwits_sentiment": 1,
+
+                "stocktwits_density": 1,
+
+                "stocktwits_messages": 1,
+            }
+        )
+        .sort(
+            "timestamp",
+            1
+        )
+    )
+
+    eastern = ZoneInfo(
+        "America/New_York"
+    )
+
+    points = []
+
+    for row in snapshots:
+
+        timestamp = row.get(
+            "timestamp"
+        )
+
+        if timestamp is None:
+            continue
+
+        if timestamp.tzinfo is None:
+
+            timestamp = (
+                timestamp.replace(
+                    tzinfo=timezone.utc
+                )
+            )
+
+        eastern_time = (
+            timestamp.astimezone(
+                eastern
+            )
+        )
+
+        points.append({
+
+            "timestamp":
+                timestamp.isoformat(),
+
+            # Every observation still has
+            # its real 3-minute timestamp.
+            "label":
+                eastern_time.strftime(
+                    "%m/%d %I:%M %p"
+                ),
+
+            "hour_minute":
+                eastern_time.strftime(
+                    "%I:%M %p"
+                ),
+
+            "minute":
+                eastern_time.minute,
+
+            "price":
+                row.get(
+                    "price"
+                ),
+
+            "change_percent":
+                row.get(
+                    "change_percent"
+                ),
+
+            "stocktwits_sentiment":
+                row.get(
+                    "stocktwits_sentiment"
+                ),
+
+            "stocktwits_density":
+                row.get(
+                    "stocktwits_density"
+                ),
+
+            "stocktwits_messages":
+                row.get(
+                    "stocktwits_messages"
+                ),
+        })
+
+
+    # ==========================================
+    # NEWS EVENTS
+    # ==========================================
+
+    news_docs = list(
+        headlines.find(
+            {
+                "securities.symbol":
+                    symbol,
+
+                "published_at": {
+                    "$gte": cutoff
+                },
+            },
+            {
+                "_id": 0,
+
+                "title": 1,
+
+                "published_at": 1,
+
+                "news_sentiment": 1,
+
+                "source": 1,
+            }
+        )
+        .sort(
+            "published_at",
+            1
+        )
+    )
+
+    news = []
+
+    for article in news_docs:
+
+        published_at = (
+            article.get(
+                "published_at"
+            )
+        )
+
+        if published_at is None:
+            continue
+
+        if published_at.tzinfo is None:
+
+            published_at = (
+                published_at.replace(
+                    tzinfo=timezone.utc
+                )
+            )
+
+        sentiment = (
+            article.get(
+                "news_sentiment"
+            )
+            or {}
+        )
+
+        news.append({
+
+            "title":
+                article.get(
+                    "title"
+                ),
+
+            "source":
+                article.get(
+                    "source"
+                ),
+
+            "timestamp":
+                published_at.isoformat(),
+
+            "label":
+                published_at
+                .astimezone(
+                    eastern
+                )
+                .strftime(
+                    "%m/%d %I:%M %p"
+                ),
+
+            "sentiment_label":
+                sentiment.get(
+                    "label"
+                ),
+
+            "sentiment_score":
+                sentiment.get(
+                    "score"
+                ),
+        })
+
+
+    return jsonify({
+
+        "symbol":
+            symbol,
+
+        # DATA is collected every 3 minutes.
+        "observation_minutes":
+            3,
+
+        # GRAPH labels appear every 15 minutes.
+        "display_interval_minutes":
+            15,
+
+        "points":
+            points,
+
+        "news":
+            news,
+    })
 
 @app.post("/collect")
 def collect_now():

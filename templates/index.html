@@ -8,6 +8,55 @@
 
     <style>
 
+        .article-title-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .article-title-row .news-title {
+            flex: 1;
+        }
+
+        .news-sentiment-badge {
+            display: inline-block;
+            flex-shrink: 0;
+
+            padding: 5px 10px;
+
+            border-radius: 6px;
+
+            font-size: 0.78rem;
+            font-weight: bold;
+
+            white-space: nowrap;
+        }
+
+        .news-sentiment-bullish {
+            background: rgba(40, 167, 69, 0.18);
+            color: #4ade80;
+            border: 1px solid #28a745;
+        }
+
+        .news-sentiment-bearish {
+            background: rgba(220, 53, 69, 0.18);
+            color: #ff6b6b;
+            border: 1px solid #dc3545;
+        }
+
+        .news-sentiment-neutral {
+            background: rgba(150, 150, 150, 0.18);
+            color: #cccccc;
+            border: 1px solid #777;
+        }
+
+        .news-sentiment-pending {
+            background: rgba(150, 150, 150, 0.10);
+            color: #999;
+            border: 1px solid #555;
+        }
+
         .stock-filters {
             margin: 20px 0;
             padding: 15px;
@@ -354,6 +403,36 @@
             max-width: 650px;
         }
 
+        .view-switcher {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0 20px 0;
+        }
+
+        .view-tab {
+            display: inline-block;
+            padding: 10px 16px;
+
+            border-radius: 6px;
+
+            text-decoration: none;
+            font-weight: bold;
+
+            background: #444;
+            color: white;
+
+            border: 1px solid #555;
+        }
+
+        .view-tab:hover {
+            background: #555;
+        }
+
+        .view-tab.active {
+            background: #1f6feb;
+            border-color: #1f6feb;
+        }
+
     </style>
 </head>
 
@@ -388,6 +467,34 @@
                 Collect News Now
             </button>
         </form>
+        <div class="view-switcher">
+
+            <a
+                href="{{ url_for(
+                    'home',
+                    market_cap=market_cap_filter,
+                    volume=volume_filter,
+                    sort=sort_by
+                ) }}"
+                class="view-tab active"
+            >
+                News View
+            </a>
+
+
+            <a
+                href="{{ url_for(
+                    'analytical_view',
+                    market_cap=market_cap_filter,
+                    volume=volume_filter,
+                    sort=sort_by
+                ) }}"
+                class="view-tab"
+            >
+                Analytical View
+            </a>
+
+        </div>
 
 
         <!-- Automatic Collector Status -->
@@ -399,7 +506,7 @@
             </p>
 
             <p>
-                Checking RSS feeds every minute.
+                Checking RSS feeds every 3 minutes.
             </p>
 
             <form
@@ -740,25 +847,66 @@
 
                         <div class="ticker-news-item">
 
-                            {% if item.link %}
+                            <div class="article-title-row">
 
-                                <a
-                                    href="{{ item.link }}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="news-title"
-                                >
-                                    {{ item.title }}
-                                </a>
+                                {% if item.link %}
 
-                            {% else %}
+                                    <a
+                                        href="{{ item.link }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="news-title"
+                                    >
+                                        {{ item.title }}
+                                    </a>
 
-                                <span class="news-title">
-                                    {{ item.title }}
-                                </span>
+                                {% else %}
 
-                            {% endif %}
+                                    <span class="news-title">
+                                        {{ item.title }}
+                                    </span>
 
+                                {% endif %}
+
+
+                                {% if item.sentiment_label %}
+
+                                    <span
+                                        class="
+                                            news-sentiment-badge
+                                            news-sentiment-{{ item.sentiment_label | lower }}
+                                        "
+                                    >
+
+                                        {{ item.sentiment_label }}
+
+                                        {% if item.sentiment_score == 1 %}
+                                            (+1)
+
+                                        {% elif item.sentiment_score == -1 %}
+                                            (-1)
+
+                                        {% else %}
+                                            (0)
+
+                                        {% endif %}
+
+                                    </span>
+
+                                {% else %}
+
+                                    <span
+                                        class="
+                                            news-sentiment-badge
+                                            news-sentiment-pending
+                                        "
+                                    >
+                                        Not analyzed
+                                    </span>
+
+                                {% endif %}
+
+                            </div>
 
                             {% if item.summary %}
 
