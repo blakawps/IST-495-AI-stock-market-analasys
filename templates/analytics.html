@@ -661,6 +661,18 @@
             Analytical View
         </a>
 
+        <a
+            href="{{ url_for(
+                'agent_page',
+                market_cap=market_cap_filter,
+                volume=volume_filter,
+                sort=sort_by
+            ) }}"
+            class="view-tab"
+        >
+            AI Agent
+        </a>
+
     </div>
 
 
@@ -2086,102 +2098,107 @@
 
                                 x: {
 
-
                                     ticks: {
 
+                                        color: "#9aa0a6",
 
-                                        color:
-                                            "#9aa0a6",
+                                        autoSkip: false,
 
+                                        maxRotation: 0,
 
-                                        autoSkip:
-                                            false,
+                                        minRotation: 0,
 
+                                        font: {
+                                            size: 10
+                                        },
 
-                                        maxRotation:
-                                            0,
+                                        callback: function(
+                                            value,
+                                            index
+                                        ) {
 
+                                            const point =
+                                                points[index];
 
-                                        callback:
-                                            function(
-                                                value,
-                                                index
+                                            if (!point) {
+                                                return "";
+                                            }
+
+                                            /*
+                                             * Keep every 3-minute observation,
+                                             * but only PRINT a label every hour.
+                                             *
+                                             * Example:
+                                             * 9:00 AM
+                                             * 10:00 AM
+                                             * 11:00 AM
+                                             */
+                                            if (
+                                                point.minute === 0
                                             ) {
 
+                                                return (
+                                                    point.hour_minute
+                                                );
 
-                                                const point =
-                                                    points[
-                                                        index
-                                                    ];
+                                            }
 
-
-                                                if (
-                                                    !point
-                                                ) {
-
-                                                    return "";
-                                                }
-
-
-                                                /*
-                                                 * Only show visible
-                                                 * label at:
-                                                 *
-                                                 * :00
-                                                 * :15
-                                                 * :30
-                                                 * :45
-                                                 */
-
-                                                if (
-                                                    point.minute
-                                                    % 15
-                                                    === 0
-                                                ) {
-
-                                                    return (
-                                                        point
-                                                        .hour_minute
-                                                    );
-
-                                                }
-
-
-                                                /*
-                                                 * Still graph the point,
-                                                 * just don't print label.
-                                                 */
-
-                                                return "";
-
-                                            },
+                                            return "";
+                                        }
 
                                     },
 
 
                                     grid: {
 
-
                                         /*
-                                         * Draw vertical grid line
-                                         * only every 15 minutes.
+                                         * Draw a vertical grid line
+                                         * every 15 minutes.
+                                         *
+                                         * Observations still occur
+                                         * every 3 minutes.
                                          */
+                                        color: function(
+                                            context
+                                        ) {
 
-                                        color:
+                                            const index =
+                                                context.index;
+
+                                            const point =
+                                                points[index];
+
+                                            if (!point) {
+
+                                                return (
+                                                    "rgba(0,0,0,0)"
+                                                );
+                                            }
+
+                                            if (
+                                                point.minute % 15
+                                                === 0
+                                            ) {
+
+                                                return (
+                                                    "rgba(100,105,115,0.20)"
+                                                );
+                                            }
+
+                                            return (
+                                                "rgba(0,0,0,0)"
+                                            );
+                                        },
+
+                                        lineWidth:
                                             function(
                                                 context
                                             ) {
 
-
-                                                const index =
-                                                    context.index;
-
-
                                                 const point =
                                                     points[
-                                                        index
+                                                        context.index
                                                     ];
-
 
                                                 if (
                                                     point
@@ -2191,18 +2208,11 @@
                                                     === 0
                                                 ) {
 
-                                                    return (
-                                                        "rgba(100,105,115,0.22)"
-                                                    );
-
+                                                    return 1;
                                                 }
 
-
-                                                return (
-                                                    "rgba(0,0,0,0)"
-                                                );
-
-                                            },
+                                                return 0;
+                                            }
 
                                     },
 
@@ -2210,9 +2220,9 @@
                                     border: {
 
                                         color:
-                                            "#343940",
+                                            "#343940"
 
-                                    },
+                                    }
 
                                 },
 

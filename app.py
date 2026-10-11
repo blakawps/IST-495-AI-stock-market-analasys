@@ -16,6 +16,12 @@ from bson.errors import InvalidId
 from collector import collect_news
 from config import FLASK_DEBUG, FLASK_HOST, FLASK_PORT
 from db import ensure_indexes, headlines, keywords, ping_database, rss_feeds,companies, market_data, stocktwits_posts, analytics_snapshots
+from trading_agent import (
+    get_agent_dashboard,
+    set_agent_enabled,
+    reset_agent,
+    run_agent,
+)
 
 app = Flask(__name__)
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -194,6 +200,116 @@ def serialize_headline(doc):
         "published_at": published_display,
         "collected_at": collected_display,
     }
+
+# =========================================================
+# AI PAPER TRADING AGENT PAGE
+# =========================================================
+
+@app.get("/agent")
+def agent_page():
+
+    dashboard = (
+        get_agent_dashboard()
+    )
+
+
+    return render_template(
+
+        "agent.html",
+
+        dashboard=
+            dashboard,
+
+        market_cap_filter=
+            request.args.get(
+                "market_cap",
+                "any"
+            ),
+
+        volume_filter=
+            request.args.get(
+                "volume",
+                "any"
+            ),
+
+        sort_by=
+            request.args.get(
+                "sort",
+                "default"
+            ),
+    )
+
+
+# =========================================================
+# START AGENT
+# =========================================================
+
+@app.post("/agent/start")
+def agent_start():
+
+    set_agent_enabled(
+        True
+    )
+
+
+    return redirect(
+        url_for(
+            "agent_page"
+        )
+    )
+
+
+# =========================================================
+# STOP AGENT
+# =========================================================
+
+@app.post("/agent/stop")
+def agent_stop():
+
+    set_agent_enabled(
+        False
+    )
+
+
+    return redirect(
+        url_for(
+            "agent_page"
+        )
+    )
+
+
+# =========================================================
+# MANUAL OBSERVATION / RUN
+# =========================================================
+
+@app.post("/agent/run")
+def agent_run_now():
+
+    run_agent()
+
+
+    return redirect(
+        url_for(
+            "agent_page"
+        )
+    )
+
+
+# =========================================================
+# RESET PAPER ACCOUNT
+# =========================================================
+
+@app.post("/agent/reset")
+def agent_reset():
+
+    reset_agent()
+
+
+    return redirect(
+        url_for(
+            "agent_page"
+        )
+    )
 
 @app.get("/api/headline-count")
 def api_headline_count():
@@ -877,13 +993,35 @@ def analytics_data(symbol):
         .upper()
     )
 
-    now = datetime.now(
-        timezone.utc
+    eastern = ZoneInfo(
+        "America/New_York"
     )
 
+    now_eastern = datetime.now(
+        eastern
+    )
+
+    start_of_day_eastern = (
+        now_eastern.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+    )
+
+    # MongoDB timestamps are UTC,
+    # so convert today's Eastern midnight
+    # back into UTC for the query.
     cutoff = (
-        now
-        - timedelta(hours=48)
+        start_of_day_eastern
+        .astimezone(
+            timezone.utc
+        )
+    )
+
+    now = datetime.now(
+        timezone.utc
     )
 
     # ==========================================
@@ -919,10 +1057,6 @@ def analytics_data(symbol):
             "timestamp",
             1
         )
-    )
-
-    eastern = ZoneInfo(
-        "America/New_York"
     )
 
     points = []

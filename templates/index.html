@@ -494,6 +494,18 @@
                 Analytical View
             </a>
 
+            <a
+                href="{{ url_for(
+                    'agent_page',
+                    market_cap=market_cap_filter,
+                    volume=volume_filter,
+                    sort=sort_by
+                ) }}"
+                class="view-tab"
+            >
+                AI Agent
+            </a>
+
         </div>
 
 

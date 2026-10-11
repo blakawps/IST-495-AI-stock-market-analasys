@@ -12,6 +12,10 @@ companies = db["companies"]
 market_data = db["market_data"]
 stocktwits_posts = db["stocktwits_posts"]
 analytics_snapshots = db["analytics_snapshots"]
+agent_state = db["agent_state"]
+agent_positions = db["agent_positions"]
+agent_trades = db["agent_trades"]
+agent_decisions = db["agent_decisions"]
 
 
 def ensure_indexes():
@@ -41,6 +45,67 @@ def ensure_indexes():
         expireAfterSeconds=48 * 60 * 60,
         name="stocktwits_48hr_ttl"
     )
+    agent_positions.create_index(
+        [
+            (
+                "symbol",
+                ASCENDING
+            )
+        ],
+        unique=True
+    )
+
+    agent_trades.create_index(
+        [
+            (
+                "trade_id",
+                ASCENDING
+            )
+        ],
+        unique=True
+    )
+
+    agent_trades.create_index(
+        [
+            (
+                "timestamp",
+                DESCENDING
+            )
+        ]
+    )
+
+    agent_trades.create_index(
+        [
+            (
+                "symbol",
+                ASCENDING
+            ),
+            (
+                "timestamp",
+                DESCENDING
+            ),
+        ]
+    )
+
+    agent_decisions.create_index(
+        [
+            (
+                "symbol",
+                ASCENDING
+            )
+        ],
+        unique=True
+    )
+
+    agent_decisions.create_index(
+        [
+            (
+                "updated_at",
+                DESCENDING
+            )
+        ]
+    )
+
     analytics_snapshots.create_index([("symbol", ASCENDING), ("timestamp", ASCENDING),],unique=True)
     analytics_snapshots.create_index([("timestamp", ASCENDING)], expireAfterSeconds= 48 * 60 * 60, name="analytics_48hr_ttl")
 

@@ -1,0 +1,1585 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        AI Paper Trading Agent
+    </title>
+
+
+    <style>
+
+        body {
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            max-width:
+                1500px;
+
+            margin:
+                30px auto;
+
+            padding:
+                0 20px;
+
+            background:
+                #17191b;
+
+            color:
+                #f1f1f1;
+        }
+
+
+        h1 {
+
+            margin-bottom:
+                5px;
+        }
+
+
+        h2 {
+
+            margin-top:
+                0;
+        }
+
+
+        .sub {
+
+            color:
+                #999;
+
+            margin-bottom:
+                20px;
+        }
+
+
+        /* =========================================
+           VIEW SWITCHER
+        ========================================= */
+
+        .view-switcher {
+
+            display:
+                flex;
+
+            gap:
+                10px;
+
+            margin:
+                15px 0 25px 0;
+        }
+
+
+        .view-tab {
+
+            padding:
+                10px 16px;
+
+            border-radius:
+                6px;
+
+            text-decoration:
+                none;
+
+            color:
+                white;
+
+            background:
+                #444;
+
+            font-weight:
+                bold;
+        }
+
+
+        .view-tab:hover {
+
+            background:
+                #555;
+        }
+
+
+        .view-tab.active {
+
+            background:
+                #1f6feb;
+        }
+
+
+        /* =========================================
+           NOTICE
+        ========================================= */
+
+        .notice {
+
+            padding:
+                12px 15px;
+
+            margin:
+                15px 0;
+
+            background:
+                #252b31;
+
+            border:
+                1px solid #414850;
+
+            border-radius:
+                6px;
+
+            color:
+                #bbb;
+        }
+
+
+        /* =========================================
+           CONTROLS
+        ========================================= */
+
+        .control-row {
+
+            display:
+                flex;
+
+            gap:
+                10px;
+
+            margin:
+                15px 0 25px 0;
+
+            flex-wrap:
+                wrap;
+        }
+
+
+        button {
+
+            border:
+                none;
+
+            padding:
+                10px 16px;
+
+            border-radius:
+                5px;
+
+            color:
+                white;
+
+            font-weight:
+                bold;
+
+            cursor:
+                pointer;
+        }
+
+
+        .start {
+
+            background:
+                #198754;
+        }
+
+
+        .stop {
+
+            background:
+                #dc3545;
+        }
+
+
+        .run {
+
+            background:
+                #1f6feb;
+        }
+
+
+        .reset {
+
+            background:
+                #666;
+        }
+
+
+        /* =========================================
+           SUMMARY CARDS
+        ========================================= */
+
+        .summary-grid {
+
+            display:
+                grid;
+
+            grid-template-columns:
+                repeat(
+                    4,
+                    minmax(
+                        160px,
+                        1fr
+                    )
+                );
+
+            gap:
+                12px;
+
+            margin-bottom:
+                15px;
+        }
+
+
+        .summary-card {
+
+            background:
+                #20242a;
+
+            border:
+                1px solid #414850;
+
+            border-radius:
+                6px;
+
+            padding:
+                15px;
+        }
+
+
+        .summary-label {
+
+            color:
+                #999;
+
+            font-size:
+                0.82rem;
+        }
+
+
+        .summary-value {
+
+            margin-top:
+                6px;
+
+            font-size:
+                1.25rem;
+
+            font-weight:
+                bold;
+        }
+
+
+        /* =========================================
+           COLORS
+        ========================================= */
+
+        .positive {
+
+            color:
+                #4ade80;
+        }
+
+
+        .negative {
+
+            color:
+                #ff6b6b;
+        }
+
+
+        .neutral {
+
+            color:
+                #ddd;
+        }
+
+
+        .running {
+
+            color:
+                #4ade80;
+        }
+
+
+        .stopped {
+
+            color:
+                #ff6b6b;
+        }
+
+
+        .buy {
+
+            color:
+                #4ade80;
+
+            font-weight:
+                bold;
+        }
+
+
+        .sell {
+
+            color:
+                #ff6b6b;
+
+            font-weight:
+                bold;
+        }
+
+
+        .watch {
+
+            color:
+                #ddd;
+
+            font-weight:
+                bold;
+        }
+
+
+        /* =========================================
+           SECTIONS
+        ========================================= */
+
+        section {
+
+            margin:
+                25px 0;
+
+            padding:
+                16px;
+
+            background:
+                #20242a;
+
+            border:
+                1px solid #414850;
+
+            border-radius:
+                6px;
+        }
+
+
+        /* =========================================
+           TABLES
+        ========================================= */
+
+        .table-wrapper {
+
+            overflow-x:
+                auto;
+        }
+
+
+        table {
+
+            width:
+                100%;
+
+            border-collapse:
+                collapse;
+
+            background:
+                #20242a;
+        }
+
+
+        th,
+        td {
+
+            padding:
+                9px 10px;
+
+            border-bottom:
+                1px solid #343a40;
+
+            text-align:
+                left;
+
+            font-size:
+                0.85rem;
+
+            vertical-align:
+                top;
+        }
+
+
+        th {
+
+            color:
+                #aaa;
+
+            background:
+                #191d22;
+
+            position:
+                sticky;
+
+            top:
+                0;
+        }
+
+
+        tr:hover {
+
+            background:
+                #252a30;
+        }
+
+
+        .reason {
+
+            color:
+                #aaa;
+
+            font-size:
+                0.78rem;
+
+            min-width:
+                300px;
+        }
+
+
+        /* =========================================
+           STATUS LINE
+        ========================================= */
+
+        .status-line {
+
+            margin:
+                15px 0;
+
+            color:
+                #aaa;
+        }
+
+
+        /* =========================================
+           MOBILE
+        ========================================= */
+
+        @media (
+            max-width: 900px
+        ) {
+
+            .summary-grid {
+
+                grid-template-columns:
+                    1fr 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<h1>
+    AI Paper Trading Agent
+</h1>
+
+
+<p class="sub">
+
+    Autonomous intraday paper-trading
+    simulation using the market,
+    news and Stocktwits data collected
+    by this project.
+
+</p>
+
+
+<!-- ======================================
+     VIEW SWITCHER
+====================================== -->
+
+<div class="view-switcher">
+
+
+    <a
+        class="view-tab"
+        href="{{ url_for(
+            'home',
+            market_cap=market_cap_filter,
+            volume=volume_filter,
+            sort=sort_by
+        ) }}"
+    >
+
+        News View
+
+    </a>
+
+
+    <a
+        class="view-tab"
+        href="{{ url_for(
+            'analytical_view',
+            market_cap=market_cap_filter,
+            volume=volume_filter,
+            sort=sort_by
+        ) }}"
+    >
+
+        Analytical View
+
+    </a>
+
+
+    <a
+        class="view-tab active"
+        href="{{ url_for(
+            'agent_page'
+        ) }}"
+    >
+
+        AI Agent
+
+    </a>
+
+
+</div>
+
+
+<div class="notice">
+
+    Simulation only.
+    No real brokerage orders are submitted.
+
+    The agent observes new information
+    when the collector updates, but only
+    executes a trade when its own
+    conditions justify an action.
+
+</div>
+
+
+<!-- ======================================
+     CONTROLS
+====================================== -->
+
+<div class="control-row">
+
+
+    {% if dashboard.state.enabled %}
+
+
+        <form
+            method="post"
+            action="{{ url_for(
+                'agent_stop'
+            ) }}"
+        >
+
+            <button class="stop">
+
+                Stop Agent
+
+            </button>
+
+        </form>
+
+
+    {% else %}
+
+
+        <form
+            method="post"
+            action="{{ url_for(
+                'agent_start'
+            ) }}"
+        >
+
+            <button class="start">
+
+                Start Agent
+
+            </button>
+
+        </form>
+
+
+    {% endif %}
+
+
+    {% if dashboard.state.enabled %}
+
+        <form
+            method="post"
+            action="{{ url_for(
+                'agent_run_now'
+            ) }}"
+        >
+
+            <button class="run">
+
+                Observe Now
+
+            </button>
+
+        </form>
+
+    {% endif %}
+
+
+    <form
+        method="post"
+        action="{{ url_for(
+            'agent_reset'
+        ) }}"
+
+        onsubmit="
+            return confirm(
+                'Reset the entire paper account and delete its trade history?'
+            );
+        "
+    >
+
+        <button class="reset">
+
+            Reset Paper Account
+
+        </button>
+
+    </form>
+
+
+</div>
+
+
+<!-- ======================================
+     MAIN ACCOUNT SUMMARY
+====================================== -->
+
+<div class="summary-grid">
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Agent
+        </div>
+
+        <div
+            class="
+                summary-value
+
+                {% if dashboard.state.enabled %}
+                    running
+                {% else %}
+                    stopped
+                {% endif %}
+            "
+        >
+
+            {% if dashboard.state.enabled %}
+
+                RUNNING
+
+            {% else %}
+
+                STOPPED
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Cash
+        </div>
+
+        <div class="summary-value">
+
+            ${{ "%.2f" | format(
+                dashboard.portfolio.cash
+            ) }}
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Open Positions Value
+        </div>
+
+        <div class="summary-value">
+
+            ${{ "%.2f" | format(
+                dashboard
+                .portfolio
+                .positions_value
+            ) }}
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Portfolio Value
+        </div>
+
+        <div class="summary-value">
+
+            ${{ "%.2f" | format(
+                dashboard
+                .portfolio
+                .portfolio_value
+            ) }}
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<!-- ======================================
+     DAILY PERFORMANCE
+====================================== -->
+
+<div class="summary-grid">
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Today's P/L
+        </div>
+
+        <div
+            class="
+                summary-value
+
+                {% if dashboard.today.total_pnl > 0 %}
+                    positive
+                {% elif dashboard.today.total_pnl < 0 %}
+                    negative
+                {% endif %}
+            "
+        >
+
+            {% if dashboard.today.total_pnl > 0 %}
+                +
+            {% endif %}
+
+            ${{ "%.2f" | format(
+                dashboard.today.total_pnl
+            ) }}
+
+            (
+
+            {% if dashboard.today.total_pnl_percent > 0 %}
+                +
+            {% endif %}
+
+            {{ "%.2f" | format(
+                dashboard
+                .today
+                .total_pnl_percent
+            ) }}%
+
+            )
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Today's Realized P/L
+        </div>
+
+        <div
+            class="
+                summary-value
+
+                {% if dashboard.today.realized_pnl > 0 %}
+                    positive
+                {% elif dashboard.today.realized_pnl < 0 %}
+                    negative
+                {% endif %}
+            "
+        >
+
+            {% if dashboard.today.realized_pnl > 0 %}
+                +
+            {% endif %}
+
+            ${{ "%.2f" | format(
+                dashboard.today.realized_pnl
+            ) }}
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Trades Today
+        </div>
+
+        <div class="summary-value">
+
+            {{ dashboard.today.trade_count }}
+
+        </div>
+
+    </div>
+
+
+    <div class="summary-card">
+
+        <div class="summary-label">
+            Win Rate
+        </div>
+
+        <div class="summary-value">
+
+            {{ "%.1f" | format(
+                dashboard.today.win_rate
+            ) }}%
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<div class="status-line">
+
+
+    Market:
+
+    {% if dashboard.market_open %}
+
+        <span class="positive">
+
+            OPEN
+
+        </span>
+
+    {% else %}
+
+        <span class="negative">
+
+            CLOSED
+
+        </span>
+
+    {% endif %}
+
+
+    &nbsp; | &nbsp;
+
+
+    New positions:
+
+    {% if dashboard.can_open_new_positions %}
+
+        <span class="positive">
+            ALLOWED
+        </span>
+
+    {% else %}
+
+        <span class="negative">
+            DISABLED
+        </span>
+
+    {% endif %}
+
+
+    &nbsp; | &nbsp;
+
+
+    Last observation:
+
+    {{ dashboard.last_run_display }}
+
+
+    <br><br>
+
+
+    {{ dashboard.state.last_status }}
+
+
+</div>
+
+
+<!-- ======================================
+     OPEN POSITIONS
+====================================== -->
+
+<section>
+
+
+<h2>
+    Open Positions
+</h2>
+
+
+<div class="table-wrapper">
+
+
+<table>
+
+
+<thead>
+
+<tr>
+
+    <th>Ticker</th>
+
+    <th>Shares</th>
+
+    <th>Entry Price</th>
+
+    <th>Current Price</th>
+
+    <th>Market Value</th>
+
+    <th>Unrealized P/L</th>
+
+    <th>Opened</th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+
+{% for position in dashboard.portfolio.positions %}
+
+
+<tr>
+
+
+    <td>
+
+        <strong>
+            {{ position.symbol }}
+        </strong>
+
+    </td>
+
+
+    <td>
+
+        {{ position.shares }}
+
+    </td>
+
+
+    <td>
+
+        ${{ "%.2f" | format(
+            position.avg_price
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        ${{ "%.2f" | format(
+            position.current_price
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        ${{ "%.2f" | format(
+            position.market_value
+        ) }}
+
+    </td>
+
+
+    <td
+        class="
+            {% if position.unrealized_pnl > 0 %}
+                positive
+            {% elif position.unrealized_pnl < 0 %}
+                negative
+            {% endif %}
+        "
+    >
+
+        {% if position.unrealized_pnl > 0 %}
+            +
+        {% endif %}
+
+        ${{ "%.2f" | format(
+            position.unrealized_pnl
+        ) }}
+
+
+        (
+
+        {% if position.pnl_percent > 0 %}
+            +
+        {% endif %}
+
+        {{ "%.2f" | format(
+            position.pnl_percent
+        ) }}%
+
+        )
+
+    </td>
+
+
+    <td>
+
+        {{ position.opened_at_display }}
+
+    </td>
+
+
+</tr>
+
+
+{% else %}
+
+
+<tr>
+
+    <td colspan="7">
+
+        The agent currently holds
+        no positions.
+
+    </td>
+
+</tr>
+
+
+{% endfor %}
+
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+</section>
+
+
+<!-- ======================================
+     CURRENT AGENT OBSERVATIONS
+====================================== -->
+
+<section>
+
+
+<h2>
+    Current Agent Watchlist
+</h2>
+
+
+<div class="table-wrapper">
+
+
+<table>
+
+
+<thead>
+
+<tr>
+
+    <th>Ticker</th>
+
+    <th>Status</th>
+
+    <th>Score</th>
+
+    <th>Price</th>
+
+    <th>News Sentiment</th>
+
+    <th>News</th>
+
+    <th>ST Sentiment</th>
+
+    <th>ST Density</th>
+
+    <th>15m Price</th>
+
+    <th>15m Density Δ</th>
+
+    <th>Changed?</th>
+
+    <th>Reason</th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+
+{% for decision in dashboard.decisions %}
+
+
+<tr>
+
+
+    <td>
+
+        <strong>
+            {{ decision.symbol }}
+        </strong>
+
+    </td>
+
+
+    <td
+        class="
+            {% if decision.decision == 'BUY' %}
+                buy
+
+            {% elif decision.decision == 'SELL' %}
+                sell
+
+            {% else %}
+                watch
+            {% endif %}
+        "
+    >
+
+        {{ decision.decision }}
+
+    </td>
+
+
+    <td>
+
+        {{ "%.3f" | format(
+            decision.score
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        ${{ "%.2f" | format(
+            decision.price
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        {{ "%.2f" | format(
+            decision.news_sentiment
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        {{ decision.news_count }}
+
+    </td>
+
+
+    <td>
+
+        {{ "%.2f" | format(
+            decision
+            .stocktwits_sentiment
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        {{ decision.stocktwits_density }}/hr
+
+    </td>
+
+
+    <td>
+
+        {% if decision.momentum_15m_percent > 0 %}
+            +
+        {% endif %}
+
+        {{ "%.2f" | format(
+            decision
+            .momentum_15m_percent
+        ) }}%
+
+    </td>
+
+
+    <td>
+
+        {% if decision.density_change_15m > 0 %}
+            +
+        {% endif %}
+
+        {{ "%.0f" | format(
+            decision
+            .density_change_15m
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        {% if decision.meaningful_change %}
+
+            YES
+
+        {% else %}
+
+            NO
+
+        {% endif %}
+
+    </td>
+
+
+    <td class="reason">
+
+        {{ decision.reason }}
+
+    </td>
+
+
+</tr>
+
+
+{% else %}
+
+
+<tr>
+
+    <td colspan="12">
+
+        No agent observations yet.
+
+    </td>
+
+</tr>
+
+
+{% endfor %}
+
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+</section>
+
+
+<!-- ======================================
+     EVERY BUY / SELL ACTIVITY
+====================================== -->
+
+<section>
+
+
+<h2>
+    Agent Buy / Sell Activity
+</h2>
+
+
+<p style="color:#999;">
+
+    Every simulated trade executed
+    by the agent is recorded here.
+
+</p>
+
+
+<div class="table-wrapper">
+
+
+<table>
+
+
+<thead>
+
+<tr>
+
+    <th>Time</th>
+
+    <th>Ticker</th>
+
+    <th>Action</th>
+
+    <th>Shares</th>
+
+    <th>Price</th>
+
+    <th>Trade Value</th>
+
+    <th>Entry Price</th>
+
+    <th>Realized P/L</th>
+
+    <th>Score</th>
+
+    <th>Reason</th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+
+{% for trade in dashboard.trades %}
+
+
+<tr>
+
+
+    <td>
+
+        {{ trade.timestamp_display }}
+
+    </td>
+
+
+    <td>
+
+        <strong>
+            {{ trade.symbol }}
+        </strong>
+
+    </td>
+
+
+    <td
+        class="
+            {% if trade.side == 'BUY' %}
+                buy
+            {% else %}
+                sell
+            {% endif %}
+        "
+    >
+
+        {{ trade.side }}
+
+    </td>
+
+
+    <td>
+
+        {{ trade.shares }}
+
+    </td>
+
+
+    <td>
+
+        ${{ "%.2f" | format(
+            trade.price
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        ${{ "%.2f" | format(
+            trade.value
+        ) }}
+
+    </td>
+
+
+    <td>
+
+        {% if trade.side == 'SELL' %}
+
+            ${{ "%.2f" | format(
+                trade.entry_price
+            ) }}
+
+        {% else %}
+
+            —
+
+        {% endif %}
+
+    </td>
+
+
+    <td>
+
+        {% if trade.side == 'SELL' %}
+
+
+            {% if trade.realized_pnl > 0 %}
+
+                <span class="positive">
+
+                    +${{ "%.2f" | format(
+                        trade.realized_pnl
+                    ) }}
+
+                </span>
+
+
+            {% elif trade.realized_pnl < 0 %}
+
+                <span class="negative">
+
+                    ${{ "%.2f" | format(
+                        trade.realized_pnl
+                    ) }}
+
+                </span>
+
+
+            {% else %}
+
+                $0.00
+
+            {% endif %}
+
+
+        {% else %}
+
+            —
+
+        {% endif %}
+
+    </td>
+
+
+    <td>
+
+        {{ "%.3f" | format(
+            trade.score
+        ) }}
+
+    </td>
+
+
+    <td class="reason">
+
+        {{ trade.reason }}
+
+    </td>
+
+
+</tr>
+
+
+{% else %}
+
+
+<tr>
+
+    <td colspan="10">
+
+        The agent has not executed
+        any simulated trades yet.
+
+    </td>
+
+</tr>
+
+
+{% endfor %}
+
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+</section>
+
+
+<script>
+
+
+    /*
+     * Refresh dashboard on the same
+     * cadence as the collector.
+     */
+
+    setTimeout(
+
+        function () {
+
+            window.location.reload();
+
+        },
+
+        180000
+
+    );
+
+
+</script>
+
+
+</body>
+
+</html>

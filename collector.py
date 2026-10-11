@@ -16,6 +16,7 @@ from finviz_client import update_market_data
 from stocktwits_scraper import (collect_stocktwits_for_symbols)
 from news_sentiment import (analyze_news_sentiment)
 from analytics_history import (save_analytics_snapshots)
+from trading_agent import (run_agent)
 
 ticker_resolver = TickerResolver()
 
@@ -672,6 +673,8 @@ def collect_news():
             f"analytics snapshots."
         )
 
+
+
     except Exception as exc:
 
         print(
@@ -682,6 +685,43 @@ def collect_news():
         stats[
             "analytics_snapshots"
         ] = 0
+
+    # =========================================================
+    # AI PAPER TRADING AGENT
+    # =========================================================
+
+    try:
+
+        agent_stats = (
+            run_agent()
+        )
+
+        stats[
+            "paper_agent"
+        ] = agent_stats
+
+        print(
+            "Paper trading agent:",
+            agent_stats
+        )
+
+
+    except Exception as exc:
+
+        print(
+            f"Paper trading agent error: "
+            f"{exc}"
+        )
+
+        stats[
+            "paper_agent"
+        ] = {
+
+            "error":
+                str(
+                    exc
+                )
+        }
 
     return stats
 
