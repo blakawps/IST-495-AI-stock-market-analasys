@@ -1,515 +1,257 @@
 <!doctype html>
-
 <html lang="en">
-
 <head>
-
     <meta charset="utf-8">
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1"
     >
 
-    <title>
-        AI Paper Trading Agent
-    </title>
-
+    <title>PyTorch RL Paper Trading Agent</title>
 
     <style>
-
         body {
-
-            font-family:
-                Arial,
-                sans-serif;
-
-            max-width:
-                1500px;
-
-            margin:
-                30px auto;
-
-            padding:
-                0 20px;
-
-            background:
-                #17191b;
-
-            color:
-                #f1f1f1;
+            font-family: Arial, sans-serif;
+            max-width: 1550px;
+            margin: 30px auto;
+            padding: 0 20px;
+            background: #17191b;
+            color: #f1f1f1;
         }
-
 
         h1 {
-
-            margin-bottom:
-                5px;
+            margin-bottom: 4px;
         }
-
 
         h2 {
-
-            margin-top:
-                0;
+            margin-top: 0;
         }
-
 
         .sub {
-
-            color:
-                #999;
-
-            margin-bottom:
-                20px;
+            color: #999;
+            margin-bottom: 18px;
         }
-
-
-        /* =========================================
-           VIEW SWITCHER
-        ========================================= */
 
         .view-switcher {
-
-            display:
-                flex;
-
-            gap:
-                10px;
-
-            margin:
-                15px 0 25px 0;
+            display: flex;
+            gap: 10px;
+            margin: 15px 0 22px;
+            flex-wrap: wrap;
         }
-
 
         .view-tab {
-
-            padding:
-                10px 16px;
-
-            border-radius:
-                6px;
-
-            text-decoration:
-                none;
-
-            color:
-                white;
-
-            background:
-                #444;
-
-            font-weight:
-                bold;
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: white;
+            background: #444;
+            border: 1px solid #555;
+            font-weight: bold;
         }
-
 
         .view-tab:hover {
-
-            background:
-                #555;
+            background: #555;
         }
-
 
         .view-tab.active {
-
-            background:
-                #1f6feb;
+            background: #1f6feb;
+            border-color: #1f6feb;
         }
-
-
-        /* =========================================
-           NOTICE
-        ========================================= */
 
         .notice {
-
-            padding:
-                12px 15px;
-
-            margin:
-                15px 0;
-
-            background:
-                #252b31;
-
-            border:
-                1px solid #414850;
-
-            border-radius:
-                6px;
-
-            color:
-                #bbb;
+            padding: 12px 15px;
+            margin: 15px 0;
+            background: #252b31;
+            border: 1px solid #414850;
+            border-radius: 6px;
+            color: #bbb;
         }
-
-
-        /* =========================================
-           CONTROLS
-        ========================================= */
 
         .control-row {
-
-            display:
-                flex;
-
-            gap:
-                10px;
-
-            margin:
-                15px 0 25px 0;
-
-            flex-wrap:
-                wrap;
+            display: flex;
+            gap: 10px;
+            margin: 15px 0 25px;
+            flex-wrap: wrap;
         }
-
 
         button {
-
-            border:
-                none;
-
-            padding:
-                10px 16px;
-
-            border-radius:
-                5px;
-
-            color:
-                white;
-
-            font-weight:
-                bold;
-
-            cursor:
-                pointer;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
         }
-
 
         .start {
-
-            background:
-                #198754;
+            background: #198754;
         }
-
 
         .stop {
-
-            background:
-                #dc3545;
+            background: #dc3545;
         }
-
 
         .run {
-
-            background:
-                #1f6feb;
+            background: #1f6feb;
         }
-
 
         .reset {
-
-            background:
-                #666;
+            background: #666;
         }
-
-
-        /* =========================================
-           SUMMARY CARDS
-        ========================================= */
 
         .summary-grid {
-
-            display:
-                grid;
-
+            display: grid;
             grid-template-columns:
                 repeat(
-                    4,
-                    minmax(
-                        160px,
-                        1fr
-                    )
+                    5,
+                    minmax(150px, 1fr)
                 );
-
-            gap:
-                12px;
-
-            margin-bottom:
-                15px;
+            gap: 12px;
+            margin-bottom: 14px;
         }
-
 
         .summary-card {
-
-            background:
-                #20242a;
-
-            border:
-                1px solid #414850;
-
-            border-radius:
-                6px;
-
-            padding:
-                15px;
+            background: #20242a;
+            border: 1px solid #414850;
+            border-radius: 6px;
+            padding: 15px;
         }
-
 
         .summary-label {
-
-            color:
-                #999;
-
-            font-size:
-                0.82rem;
+            color: #999;
+            font-size: 0.82rem;
         }
-
 
         .summary-value {
-
-            margin-top:
-                6px;
-
-            font-size:
-                1.25rem;
-
-            font-weight:
-                bold;
+            margin-top: 6px;
+            font-size: 1.22rem;
+            font-weight: bold;
         }
 
-
-        /* =========================================
-           COLORS
-        ========================================= */
+        .summary-subtext {
+            margin-top: 7px;
+            color: #999;
+            font-size: 0.72rem;
+            line-height: 1.35;
+        }
 
         .positive {
-
-            color:
-                #4ade80;
+            color: #4ade80;
         }
-
 
         .negative {
-
-            color:
-                #ff6b6b;
+            color: #ff6b6b;
         }
-
 
         .neutral {
-
-            color:
-                #ddd;
+            color: #ddd;
         }
-
-
-        .running {
-
-            color:
-                #4ade80;
-        }
-
-
-        .stopped {
-
-            color:
-                #ff6b6b;
-        }
-
 
         .buy {
-
-            color:
-                #4ade80;
-
-            font-weight:
-                bold;
+            color: #4ade80;
+            font-weight: bold;
         }
-
 
         .sell {
-
-            color:
-                #ff6b6b;
-
-            font-weight:
-                bold;
+            color: #ff6b6b;
+            font-weight: bold;
         }
 
-
-        .watch {
-
-            color:
-                #ddd;
-
-            font-weight:
-                bold;
+        .wait {
+            color: #f5c542;
+            font-weight: bold;
         }
-
-
-        /* =========================================
-           SECTIONS
-        ========================================= */
 
         section {
-
-            margin:
-                25px 0;
-
-            padding:
-                16px;
-
-            background:
-                #20242a;
-
-            border:
-                1px solid #414850;
-
-            border-radius:
-                6px;
+            margin: 26px 0;
+            padding: 16px;
+            background: #20242a;
+            border: 1px solid #414850;
+            border-radius: 6px;
         }
 
-
-        /* =========================================
-           TABLES
-        ========================================= */
+        .status-line {
+            margin: 15px 0;
+            color: #aaa;
+        }
 
         .table-wrapper {
-
-            overflow-x:
-                auto;
+            overflow-x: auto;
         }
-
 
         table {
-
-            width:
-                100%;
-
-            border-collapse:
-                collapse;
-
-            background:
-                #20242a;
+            width: 100%;
+            border-collapse: collapse;
+            background: #20242a;
         }
-
 
         th,
         td {
-
-            padding:
-                9px 10px;
-
-            border-bottom:
-                1px solid #343a40;
-
-            text-align:
-                left;
-
-            font-size:
-                0.85rem;
-
-            vertical-align:
-                top;
+            padding: 9px 10px;
+            border-bottom: 1px solid #343a40;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.84rem;
         }
-
 
         th {
-
-            color:
-                #aaa;
-
-            background:
-                #191d22;
-
-            position:
-                sticky;
-
-            top:
-                0;
+            color: #aaa;
+            background: #191d22;
+            position: sticky;
+            top: 0;
         }
-
 
         tr:hover {
-
-            background:
-                #252a30;
+            background: #252a30;
         }
-
 
         .reason {
-
-            color:
-                #aaa;
-
-            font-size:
-                0.78rem;
-
-            min-width:
-                300px;
+            color: #aaa;
+            min-width: 300px;
+            font-size: 0.78rem;
         }
 
-
-        /* =========================================
-           STATUS LINE
-        ========================================= */
-
-        .status-line {
-
-            margin:
-                15px 0;
-
-            color:
-                #aaa;
+        .small {
+            color: #999;
+            font-size: 0.78rem;
         }
 
+        .score-good {
+            color: #4ade80;
+            font-weight: bold;
+        }
 
-        /* =========================================
-           MOBILE
-        ========================================= */
+        .score-mid {
+            color: #f5c542;
+            font-weight: bold;
+        }
 
-        @media (
-            max-width: 900px
-        ) {
+        .score-bad {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
 
+        @media (max-width: 1000px) {
             .summary-grid {
-
-                grid-template-columns:
-                    1fr 1fr;
+                grid-template-columns: 1fr 1fr;
             }
-
         }
-
     </style>
-
 </head>
-
 
 <body>
 
-
-<h1>
-    AI Paper Trading Agent
-</h1>
-
+<h1>PyTorch Reinforcement-Learning Agent</h1>
 
 <p class="sub">
-
-    Autonomous intraday paper-trading
-    simulation using the market,
-    news and Stocktwits data collected
-    by this project.
-
+    Autonomous intraday paper trading using your existing FinBERT news
+    sentiment, Stocktwits activity, price history, market data and portfolio
+    state.
 </p>
 
 
-<!-- ======================================
-     VIEW SWITCHER
-====================================== -->
-
 <div class="view-switcher">
-
 
     <a
         class="view-tab"
@@ -520,11 +262,8 @@
             sort=sort_by
         ) }}"
     >
-
         News View
-
     </a>
-
 
     <a
         class="view-tab"
@@ -535,84 +274,50 @@
             sort=sort_by
         ) }}"
     >
-
         Analytical View
-
     </a>
-
 
     <a
         class="view-tab active"
-        href="{{ url_for(
-            'agent_page'
-        ) }}"
+        href="{{ url_for('agent_page') }}"
     >
-
         AI Agent
-
     </a>
-
 
 </div>
 
 
 <div class="notice">
-
-    Simulation only.
-    No real brokerage orders are submitted.
-
-    The agent observes new information
-    when the collector updates, but only
-    executes a trade when its own
-    conditions justify an action.
-
+    <strong>Paper trading only.</strong>
+    The neural network chooses BUY / WAIT / SELL. Future market data is never
+    exposed to the decision; it is used later to reward or punish that action.
+    FinBERT remains the news-sentiment model.
 </div>
 
 
-<!-- ======================================
-     CONTROLS
-====================================== -->
-
 <div class="control-row">
-
 
     {% if dashboard.state.enabled %}
 
-
         <form
             method="post"
-            action="{{ url_for(
-                'agent_stop'
-            ) }}"
+            action="{{ url_for('agent_stop') }}"
         >
-
             <button class="stop">
-
                 Stop Agent
-
             </button>
-
         </form>
-
 
     {% else %}
 
-
         <form
             method="post"
-            action="{{ url_for(
-                'agent_start'
-            ) }}"
+            action="{{ url_for('agent_start') }}"
         >
-
             <button class="start">
-
                 Start Agent
-
             </button>
-
         </form>
-
 
     {% endif %}
 
@@ -621,17 +326,11 @@
 
         <form
             method="post"
-            action="{{ url_for(
-                'agent_run_now'
-            ) }}"
+            action="{{ url_for('agent_run_now') }}"
         >
-
             <button class="run">
-
                 Observe Now
-
             </button>
-
         </form>
 
     {% endif %}
@@ -639,38 +338,28 @@
 
     <form
         method="post"
-        action="{{ url_for(
-            'agent_reset'
-        ) }}"
-
+        action="{{ url_for('agent_reset') }}"
         onsubmit="
             return confirm(
-                'Reset the entire paper account and delete its trade history?'
+                'Reset the paper portfolio? Learned RL memory will be kept.'
             );
         "
     >
-
         <button class="reset">
-
-            Reset Paper Account
-
+            Reset Paper Portfolio
         </button>
-
     </form>
-
 
 </div>
 
 
-<!-- ======================================
-     MAIN ACCOUNT SUMMARY
-====================================== -->
+<!-- =====================================================
+     MODEL STATUS
+===================================================== -->
 
 <div class="summary-grid">
 
-
     <div class="summary-card">
-
         <div class="summary-label">
             Agent
         </div>
@@ -678,97 +367,161 @@
         <div
             class="
                 summary-value
-
                 {% if dashboard.state.enabled %}
-                    running
+                    positive
                 {% else %}
-                    stopped
+                    negative
                 {% endif %}
             "
         >
-
             {% if dashboard.state.enabled %}
-
                 RUNNING
-
             {% else %}
-
                 STOPPED
-
             {% endif %}
-
         </div>
-
     </div>
 
 
     <div class="summary-card">
+        <div class="summary-label">
+            Neural Model
+        </div>
 
+        <div
+            class="
+                summary-value
+                {% if dashboard.model.ready %}
+                    positive
+                {% else %}
+                    negative
+                {% endif %}
+            "
+        >
+            {% if dashboard.model.ready %}
+                READY
+            {% else %}
+                LEARNING
+            {% endif %}
+        </div>
+    </div>
+
+
+    <div class="summary-card">
+        <div class="summary-label">
+            RL Experiences
+        </div>
+
+        <div class="summary-value">
+            {{ dashboard.model.experience_count }}
+        </div>
+    </div>
+
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Exploration ε
+        </div>
+
+        <div class="summary-value">
+            {{ "%.3f" | format(
+                dashboard.model.epsilon
+            ) }}
+        </div>
+    </div>
+
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Training Steps
+        </div>
+
+        <div class="summary-value">
+            {{ dashboard.model.optimizer_steps }}
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Forecast Records
+        </div>
+
+        <div class="summary-value">
+            {{ dashboard.model.prediction_count or 0 }}
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Finalized Forecasts
+        </div>
+
+        <div class="summary-value">
+            {{ dashboard.model.scored_prediction_count or 0 }}
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Prediction Loss
+        </div>
+
+        <div class="summary-value">
+            {% if dashboard.model.last_prediction_loss is not none %}
+                {{ "%.4f" | format(dashboard.model.last_prediction_loss) }}
+            {% else %}
+                —
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     ACCOUNT
+===================================================== -->
+
+<div class="summary-grid">
+
+    <div class="summary-card">
         <div class="summary-label">
             Cash
         </div>
 
         <div class="summary-value">
-
             ${{ "%.2f" | format(
                 dashboard.portfolio.cash
             ) }}
-
         </div>
-
     </div>
 
 
     <div class="summary-card">
-
         <div class="summary-label">
-            Open Positions Value
+            Open Positions
         </div>
 
         <div class="summary-value">
-
-            ${{ "%.2f" | format(
-                dashboard
-                .portfolio
-                .positions_value
-            ) }}
-
+            {{ dashboard.portfolio.positions | length }}
         </div>
-
     </div>
 
 
     <div class="summary-card">
-
         <div class="summary-label">
             Portfolio Value
         </div>
 
         <div class="summary-value">
-
             ${{ "%.2f" | format(
-                dashboard
-                .portfolio
-                .portfolio_value
+                dashboard.portfolio.portfolio_value
             ) }}
-
         </div>
-
     </div>
 
 
-</div>
-
-
-<!-- ======================================
-     DAILY PERFORMANCE
-====================================== -->
-
-<div class="summary-grid">
-
-
     <div class="summary-card">
-
         <div class="summary-label">
             Today's P/L
         </div>
@@ -776,7 +529,6 @@
         <div
             class="
                 summary-value
-
                 {% if dashboard.today.total_pnl > 0 %}
                     positive
                 {% elif dashboard.today.total_pnl < 0 %}
@@ -784,7 +536,6 @@
                 {% endif %}
             "
         >
-
             {% if dashboard.today.total_pnl > 0 %}
                 +
             {% endif %}
@@ -794,243 +545,190 @@
             ) }}
 
             (
-
             {% if dashboard.today.total_pnl_percent > 0 %}
                 +
             {% endif %}
-
             {{ "%.2f" | format(
-                dashboard
-                .today
-                .total_pnl_percent
+                dashboard.today.total_pnl_percent
             ) }}%
-
             )
-
         </div>
-
     </div>
 
 
     <div class="summary-card">
-
         <div class="summary-label">
-            Today's Realized P/L
-        </div>
-
-        <div
-            class="
-                summary-value
-
-                {% if dashboard.today.realized_pnl > 0 %}
-                    positive
-                {% elif dashboard.today.realized_pnl < 0 %}
-                    negative
-                {% endif %}
-            "
-        >
-
-            {% if dashboard.today.realized_pnl > 0 %}
-                +
-            {% endif %}
-
-            ${{ "%.2f" | format(
-                dashboard.today.realized_pnl
-            ) }}
-
-        </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-        <div class="summary-label">
-            Trades Today
+            Today's Win Rate
         </div>
 
         <div class="summary-value">
-
-            {{ dashboard.today.trade_count }}
-
-        </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-        <div class="summary-label">
-            Win Rate
-        </div>
-
-        <div class="summary-value">
-
             {{ "%.1f" | format(
                 dashboard.today.win_rate
             ) }}%
-
         </div>
-
     </div>
 
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Total AI Win %
+        </div>
+
+        <div class="summary-value positive">
+            {{ "%.1f" | format(
+                dashboard.lifetime.win_rate
+            ) }}%
+        </div>
+
+        <div class="summary-subtext">
+            {{ dashboard.lifetime.winning_trades }} wins /
+            {{ dashboard.lifetime.closed_trades }} closed
+        </div>
+    </div>
+
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Total AI Loss %
+        </div>
+
+        <div class="summary-value negative">
+            {{ "%.1f" | format(
+                dashboard.lifetime.loss_rate
+            ) }}%
+        </div>
+
+        <div class="summary-subtext">
+            {{ dashboard.lifetime.losing_trades }} losses
+            {% if dashboard.lifetime.breakeven_trades %}
+                · {{ dashboard.lifetime.breakeven_trades }} flat
+            {% endif %}
+        </div>
+    </div>
+
+
+    <div class="summary-card">
+        <div class="summary-label">
+            Prediction Accuracy
+        </div>
+
+        <div class="summary-value">
+            {% if dashboard.prediction_accuracy.scored > 0 %}
+                {{ "%.1f" | format(
+                    dashboard.prediction_accuracy.accuracy
+                ) }}%
+            {% else %}
+                —
+            {% endif %}
+        </div>
+
+        <div class="summary-subtext">
+            {% if dashboard.prediction_accuracy.scored > 0 %}
+                {{ dashboard.prediction_accuracy.correct }} /
+                {{ dashboard.prediction_accuracy.scored }} directions correct
+                <br>
+                15m {{ "%.1f" | format(dashboard.prediction_accuracy.by_horizon['15m'].accuracy) }}%
+                · 30m {{ "%.1f" | format(dashboard.prediction_accuracy.by_horizon['30m'].accuracy) }}%
+                · 60m {{ "%.1f" | format(dashboard.prediction_accuracy.by_horizon['60m'].accuracy) }}%
+            {% else %}
+                Waiting for matured 15m / 30m / 60m forecasts
+            {% endif %}
+        </div>
+    </div>
 
 </div>
 
 
 <div class="status-line">
 
-
     Market:
 
     {% if dashboard.market_open %}
-
-        <span class="positive">
-
-            OPEN
-
-        </span>
-
+        <span class="positive">OPEN</span>
     {% else %}
-
-        <span class="negative">
-
-            CLOSED
-
-        </span>
-
+        <span class="negative">CLOSED</span>
     {% endif %}
-
 
     &nbsp; | &nbsp;
 
-
-    New positions:
+    New entries:
 
     {% if dashboard.can_open_new_positions %}
-
-        <span class="positive">
-            ALLOWED
-        </span>
-
+        <span class="positive">ALLOWED</span>
     {% else %}
-
-        <span class="negative">
-            DISABLED
-        </span>
-
+        <span class="negative">DISABLED</span>
     {% endif %}
-
 
     &nbsp; | &nbsp;
 
+    Device:
+    {{ dashboard.model.device }}
+
+    &nbsp; | &nbsp;
 
     Last observation:
-
     {{ dashboard.last_run_display }}
-
 
     <br><br>
 
-
     {{ dashboard.state.last_status }}
-
 
 </div>
 
 
-<!-- ======================================
+<!-- =====================================================
      OPEN POSITIONS
-====================================== -->
+===================================================== -->
 
 <section>
 
-
-<h2>
-    Open Positions
-</h2>
-
+<h2>Open Positions</h2>
 
 <div class="table-wrapper">
 
-
 <table>
 
-
 <thead>
-
 <tr>
-
     <th>Ticker</th>
-
     <th>Shares</th>
-
-    <th>Entry Price</th>
-
+    <th>Average Entry</th>
     <th>Current Price</th>
-
-    <th>Market Value</th>
-
+    <th>Value</th>
     <th>Unrealized P/L</th>
-
     <th>Opened</th>
-
 </tr>
-
 </thead>
-
 
 <tbody>
 
-
 {% for position in dashboard.portfolio.positions %}
-
 
 <tr>
 
-
     <td>
-
-        <strong>
-            {{ position.symbol }}
-        </strong>
-
+        <strong>{{ position.symbol }}</strong>
     </td>
 
+    <td>{{ position.shares }}</td>
 
     <td>
-
-        {{ position.shares }}
-
-    </td>
-
-
-    <td>
-
         ${{ "%.2f" | format(
             position.avg_price
         ) }}
-
     </td>
 
-
     <td>
-
         ${{ "%.2f" | format(
             position.current_price
         ) }}
-
     </td>
 
-
     <td>
-
         ${{ "%.2f" | format(
             position.market_value
         ) }}
-
     </td>
-
 
     <td
         class="
@@ -1041,7 +739,6 @@
             {% endif %}
         "
     >
-
         {% if position.unrealized_pnl > 0 %}
             +
         {% endif %}
@@ -1050,362 +747,374 @@
             position.unrealized_pnl
         ) }}
 
-
         (
-
         {% if position.pnl_percent > 0 %}
             +
         {% endif %}
-
         {{ "%.2f" | format(
             position.pnl_percent
         ) }}%
-
         )
-
     </td>
-
 
     <td>
-
         {{ position.opened_at_display }}
-
     </td>
 
-
 </tr>
-
 
 {% else %}
 
-
 <tr>
-
     <td colspan="7">
-
-        The agent currently holds
-        no positions.
-
+        The agent currently holds no positions.
     </td>
-
 </tr>
-
 
 {% endfor %}
 
-
 </tbody>
-
 
 </table>
 
-
 </div>
-
 
 </section>
 
 
-<!-- ======================================
-     CURRENT AGENT OBSERVATIONS
-====================================== -->
+<!-- =====================================================
+     CURRENT NEURAL DECISIONS
+===================================================== -->
 
 <section>
 
+<h2>Current Neural Decisions</h2>
 
-<h2>
-    Current Agent Watchlist
-</h2>
-
+<p class="small">
+    Q-values are the neural network's learned action values.
+    The largest legal Q-value is the action it prefers.
+</p>
 
 <div class="table-wrapper">
 
-
 <table>
 
-
 <thead>
-
 <tr>
-
     <th>Ticker</th>
-
-    <th>Status</th>
-
-    <th>Score</th>
-
+    <th>Chosen</th>
+    <th>Executed</th>
     <th>Price</th>
-
-    <th>News Sentiment</th>
-
-    <th>News</th>
-
+    <th>Q WAIT</th>
+    <th>Q BUY</th>
+    <th>Q SELL</th>
+    <th>Pred 15m</th>
+    <th>Pred 30m</th>
+    <th>Pred 60m</th>
+    <th>30m UP Prob.</th>
+    <th>Pred 30m Upside</th>
+    <th>Pred 30m Downside</th>
+    <th>News 15m</th>
+    <th>News 6h</th>
+    <th>News Count</th>
     <th>ST Sentiment</th>
-
     <th>ST Density</th>
-
-    <th>15m Price</th>
-
-    <th>15m Density Δ</th>
-
-    <th>Changed?</th>
-
-    <th>Reason</th>
-
+    <th>15m Momentum</th>
+    <th>Explored?</th>
 </tr>
-
 </thead>
-
 
 <tbody>
 
-
 {% for decision in dashboard.decisions %}
-
 
 <tr>
 
-
     <td>
-
         <strong>
             {{ decision.symbol }}
         </strong>
-
     </td>
-
 
     <td
         class="
             {% if decision.decision == 'BUY' %}
                 buy
-
             {% elif decision.decision == 'SELL' %}
                 sell
-
             {% else %}
-                watch
+                wait
             {% endif %}
         "
     >
-
         {{ decision.decision }}
-
     </td>
 
-
     <td>
-
-        {{ "%.3f" | format(
-            decision.score
-        ) }}
-
+        {{ decision.executed_action or "—" }}
     </td>
 
-
     <td>
-
         ${{ "%.2f" | format(
-            decision.price
+            decision.price or 0
         ) }}
-
     </td>
 
+    <td>
+        {{ "%.3f" | format(
+            decision.q_wait or 0
+        ) }}
+    </td>
 
     <td>
+        {{ "%.3f" | format(
+            decision.q_buy or 0
+        ) }}
+    </td>
 
+    <td>
+        {{ "%.3f" | format(
+            decision.q_sell or 0
+        ) }}
+    </td>
+
+    <td>
         {{ "%.2f" | format(
-            decision.news_sentiment
+            decision.news_sentiment_15m or 0
         ) }}
-
     </td>
 
-
     <td>
-
-        {{ decision.news_count }}
-
-    </td>
-
-
-    <td>
-
         {{ "%.2f" | format(
-            decision
-            .stocktwits_sentiment
+            decision.news_sentiment or 0
         ) }}
-
     </td>
 
-
     <td>
-
-        {{ decision.stocktwits_density }}/hr
-
+        {{ decision.news_count or 0 }}
     </td>
 
+    <td>
+        {{ "%.2f" | format(
+            decision.stocktwits_sentiment or 0
+        ) }}
+    </td>
 
     <td>
+        {{ decision.stocktwits_density or 0 }}/hr
+    </td>
 
-        {% if decision.momentum_15m_percent > 0 %}
+    <td>
+        {% if (decision.momentum_15m_percent or 0) > 0 %}
             +
         {% endif %}
-
         {{ "%.2f" | format(
-            decision
-            .momentum_15m_percent
+            decision.momentum_15m_percent or 0
         ) }}%
-
     </td>
 
-
     <td>
-
-        {% if decision.density_change_15m > 0 %}
-            +
-        {% endif %}
-
-        {{ "%.0f" | format(
-            decision
-            .density_change_15m
-        ) }}
-
-    </td>
-
-
-    <td>
-
-        {% if decision.meaningful_change %}
-
+        {% if decision.explored %}
             YES
-
         {% else %}
-
             NO
-
         {% endif %}
-
     </td>
-
-
-    <td class="reason">
-
-        {{ decision.reason }}
-
-    </td>
-
 
 </tr>
-
 
 {% else %}
 
-
 <tr>
-
-    <td colspan="12">
-
-        No agent observations yet.
-
+    <td colspan="20">
+        No neural observations yet.
     </td>
-
 </tr>
-
 
 {% endfor %}
 
-
 </tbody>
-
 
 </table>
 
-
 </div>
-
 
 </section>
 
 
-<!-- ======================================
-     EVERY BUY / SELL ACTIVITY
-====================================== -->
+<!-- =====================================================
+     PREDICTION VS REALITY
+===================================================== -->
 
 <section>
 
+<h2>Prediction vs Reality</h2>
 
-<h2>
-    Agent Buy / Sell Activity
-</h2>
-
-
-<p style="color:#999;">
-
-    Every simulated trade executed
-    by the agent is recorded here.
-
+<p class="small">
+    At every trainable BUY / WAIT / SELL action, the neural model records what
+    it expects to happen next. The 15m, 30m and 60m columns fill with actual
+    market outcomes only after those horizons occur. Future data is never used
+    before the original decision.
 </p>
-
 
 <div class="table-wrapper">
 
-
 <table>
 
-
 <thead>
-
 <tr>
-
     <th>Time</th>
-
     <th>Ticker</th>
-
     <th>Action</th>
-
-    <th>Shares</th>
-
-    <th>Price</th>
-
-    <th>Trade Value</th>
-
-    <th>Entry Price</th>
-
-    <th>Realized P/L</th>
-
-    <th>Score</th>
-
-    <th>Reason</th>
-
+    <th>Start</th>
+    <th>Pred 15m</th>
+    <th>Actual 15m</th>
+    <th>Pred 30m</th>
+    <th>Actual 30m</th>
+    <th>Pred 60m</th>
+    <th>Actual 60m</th>
+    <th>30m Pred UP</th>
+    <th>30m Pred Upside</th>
+    <th>30m Actual Upside</th>
+    <th>30m Pred Downside</th>
+    <th>30m Actual Downside</th>
+    <th>Forecast Score</th>
 </tr>
-
 </thead>
-
 
 <tbody>
 
+{% for p in dashboard.predictions %}
+{% set pred = p.predicted or {} %}
+{% set returns = pred.get('returns_percent', {}) %}
+{% set probs = pred.get('direction_probabilities', {}) %}
+{% set pup = pred.get('max_upside_percent', {}) %}
+{% set pdown = pred.get('max_downside_percent', {}) %}
+{% set h15 = (p.horizons or {}).get('15m', {}) %}
+{% set h30 = (p.horizons or {}).get('30m', {}) %}
+{% set h60 = (p.horizons or {}).get('60m', {}) %}
+
+<tr>
+    <td>{{ p.timestamp_display }}</td>
+    <td><strong>{{ p.symbol }}</strong></td>
+    <td class="{% if p.action == 'BUY' %}buy{% elif p.action == 'SELL' %}sell{% else %}wait{% endif %}">
+        {{ p.action }}
+    </td>
+    <td>${{ "%.2f" | format(p.price_at_prediction or 0) }}</td>
+    <td>{{ "%+.2f" | format(returns.get('15m', 0)) }}%</td>
+    <td>
+        {% if h15.get('status') == 'scored' %}
+            {{ "%+.2f" | format(h15.get('actual_return_percent', 0)) }}%
+        {% elif h15.get('status') == 'unavailable_market_close' %}
+            N/A close
+        {% else %}
+            Pending
+        {% endif %}
+    </td>
+    <td>{{ "%+.2f" | format(returns.get('30m', 0)) }}%</td>
+    <td>
+        {% if h30.get('status') == 'scored' %}
+            {{ "%+.2f" | format(h30.get('actual_return_percent', 0)) }}%
+        {% elif h30.get('status') == 'unavailable_market_close' %}
+            N/A close
+        {% else %}
+            Pending
+        {% endif %}
+    </td>
+    <td>{{ "%+.2f" | format(returns.get('60m', 0)) }}%</td>
+    <td>
+        {% if h60.get('status') == 'scored' %}
+            {{ "%+.2f" | format(h60.get('actual_return_percent', 0)) }}%
+        {% elif h60.get('status') == 'unavailable_market_close' %}
+            N/A close
+        {% else %}
+            Pending
+        {% endif %}
+    </td>
+    <td>{{ "%.1f" | format((probs.get('30m', {}).get('UP', 0)) * 100) }}%</td>
+    <td>+{{ "%.2f" | format(pup.get('30m', 0)) }}%</td>
+    <td>
+        {% if h30.get('status') == 'scored' %}
+            +{{ "%.2f" | format(h30.get('max_upside_percent', 0)) }}%
+        {% else %}—{% endif %}
+    </td>
+    <td>-{{ "%.2f" | format(pdown.get('30m', 0)) }}%</td>
+    <td>
+        {% if h30.get('status') == 'scored' %}
+            -{{ "%.2f" | format(h30.get('max_downside_percent', 0)) }}%
+        {% else %}—{% endif %}
+    </td>
+    <td>
+        {% if p.prediction_score is not none and p.prediction_score is defined %}
+            {{ "%.0f" | format(p.prediction_score) }}/100
+        {% else %}
+            Pending
+        {% endif %}
+    </td>
+</tr>
+
+{% else %}
+<tr>
+    <td colspan="16">No prediction records yet.</td>
+</tr>
+{% endfor %}
+
+</tbody>
+</table>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+     ALL BUY / SELL ACTIVITY
+===================================================== -->
+
+<section>
+
+<h2>Agent Buy / Sell Activity</h2>
+
+<p class="small">
+    Every simulated BUY and SELL remains here. Completed SELLs receive a final
+    hindsight reward after the post-sale evaluation window matures.
+</p>
+
+<div class="table-wrapper">
+
+<table>
+
+<thead>
+<tr>
+    <th>Time</th>
+    <th>Ticker</th>
+    <th>Action</th>
+    <th>Shares</th>
+    <th>Price</th>
+    <th>Entry</th>
+    <th>Value</th>
+    <th>Realized P/L</th>
+    <th>Trade Score</th>
+    <th>RL Reward</th>
+    <th>Why</th>
+</tr>
+</thead>
+
+<tbody>
 
 {% for trade in dashboard.trades %}
 
-
 <tr>
 
-
     <td>
-
         {{ trade.timestamp_display }}
-
     </td>
 
-
     <td>
-
         <strong>
             {{ trade.symbol }}
         </strong>
-
     </td>
-
 
     <td
         class="
@@ -1416,170 +1125,259 @@
             {% endif %}
         "
     >
-
         {{ trade.side }}
-
     </td>
 
-
     <td>
-
         {{ trade.shares }}
-
     </td>
 
-
     <td>
-
         ${{ "%.2f" | format(
             trade.price
         ) }}
-
     </td>
 
+    <td>
+        {% if trade.side == 'SELL' %}
+            ${{ "%.2f" | format(
+                trade.entry_price or 0
+            ) }}
+        {% else %}
+            —
+        {% endif %}
+    </td>
 
     <td>
-
         ${{ "%.2f" | format(
             trade.value
         ) }}
-
     </td>
 
-
     <td>
-
         {% if trade.side == 'SELL' %}
 
-            ${{ "%.2f" | format(
-                trade.entry_price
+            <span
+                class="
+                    {% if (trade.realized_pnl or 0) > 0 %}
+                        positive
+                    {% elif (trade.realized_pnl or 0) < 0 %}
+                        negative
+                    {% endif %}
+                "
+            >
+                {% if (trade.realized_pnl or 0) > 0 %}
+                    +
+                {% endif %}
+
+                ${{ "%.2f" | format(
+                    trade.realized_pnl or 0
+                ) }}
+            </span>
+
+        {% else %}
+            —
+        {% endif %}
+    </td>
+
+    <td>
+        {% if trade.trade_score is defined %}
+
+            <span
+                class="
+                    {% if trade.trade_score >= 70 %}
+                        score-good
+                    {% elif trade.trade_score >= 45 %}
+                        score-mid
+                    {% else %}
+                        score-bad
+                    {% endif %}
+                "
+            >
+                {{ trade.trade_score }}/100
+            </span>
+
+        {% else %}
+            Pending
+        {% endif %}
+    </td>
+
+    <td>
+        {% if trade.rl_reward is defined %}
+            {{ "%+.2f" | format(
+                trade.rl_reward
             ) }}
-
         {% else %}
-
-            —
-
+            Pending
         {% endif %}
-
     </td>
-
-
-    <td>
-
-        {% if trade.side == 'SELL' %}
-
-
-            {% if trade.realized_pnl > 0 %}
-
-                <span class="positive">
-
-                    +${{ "%.2f" | format(
-                        trade.realized_pnl
-                    ) }}
-
-                </span>
-
-
-            {% elif trade.realized_pnl < 0 %}
-
-                <span class="negative">
-
-                    ${{ "%.2f" | format(
-                        trade.realized_pnl
-                    ) }}
-
-                </span>
-
-
-            {% else %}
-
-                $0.00
-
-            {% endif %}
-
-
-        {% else %}
-
-            —
-
-        {% endif %}
-
-    </td>
-
-
-    <td>
-
-        {{ "%.3f" | format(
-            trade.score
-        ) }}
-
-    </td>
-
 
     <td class="reason">
-
         {{ trade.reason }}
-
     </td>
 
-
 </tr>
-
 
 {% else %}
 
+<tr>
+    <td colspan="11">
+        No simulated trades yet.
+    </td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+     FINALIZED REWARD REVIEWS
+===================================================== -->
+
+<section>
+
+<h2>Recent Trade Reward Reviews</h2>
+
+<p class="small">
+    These are the final hindsight scores used to teach the agent whether it
+    bought too high, sold too early, tolerated too much drawdown, or captured
+    the move well.
+</p>
+
+<div class="table-wrapper">
+
+<table>
+
+<thead>
+<tr>
+    <th>Ticker</th>
+    <th>Score</th>
+    <th>Reward</th>
+    <th>Return</th>
+    <th>Buy Regret</th>
+    <th>Sell Regret</th>
+    <th>Max Drawdown</th>
+    <th>Capture Efficiency</th>
+    <th>Post-Sell Protection</th>
+    <th>Primary Lesson</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for review in dashboard.trade_reviews %}
+
+{% set m = review.metrics or {} %}
 
 <tr>
 
-    <td colspan="10">
+    <td>
+        <strong>
+            {{ review.symbol }}
+        </strong>
+    </td>
 
-        The agent has not executed
-        any simulated trades yet.
+    <td>
+        <span
+            class="
+                {% if review.trade_score >= 70 %}
+                    score-good
+                {% elif review.trade_score >= 45 %}
+                    score-mid
+                {% else %}
+                    score-bad
+                {% endif %}
+            "
+        >
+            {{ review.trade_score }}/100
+        </span>
+    </td>
 
+    <td>
+        {{ "%+.2f" | format(
+            review.reward
+        ) }}
+    </td>
+
+    <td>
+        {{ "%+.2f" | format(
+            m.realized_return_percent or 0
+        ) }}%
+    </td>
+
+    <td>
+        {{ "%.2f" | format(
+            m.buy_regret_percent or 0
+        ) }}%
+    </td>
+
+    <td>
+        {{ "%.2f" | format(
+            m.sell_regret_percent or 0
+        ) }}%
+    </td>
+
+    <td>
+        {{ "%.2f" | format(
+            m.max_drawdown_percent or 0
+        ) }}%
+    </td>
+
+    <td>
+        {{ "%.2f" | format(
+            m.capture_efficiency or 0
+        ) }}
+    </td>
+
+    <td>
+        {{ "%.2f" | format(
+            m.post_sell_protection_percent or 0
+        ) }}%
+    </td>
+
+    <td class="reason">
+        {{ (m.primary_reason or "—").replace('_', ' ') }}
+        {% if m.primary_component_value is defined %}
+            ({{ "%+.2f" | format(m.primary_component_value or 0) }})
+        {% endif %}
     </td>
 
 </tr>
 
+{% else %}
+
+<tr>
+    <td colspan="10">
+        No completed hindsight reviews yet.
+    </td>
+</tr>
 
 {% endfor %}
 
-
 </tbody>
-
 
 </table>
 
-
 </div>
-
 
 </section>
 
 
 <script>
-
-
-    /*
-     * Refresh dashboard on the same
-     * cadence as the collector.
-     */
-
     setTimeout(
-
         function () {
-
             window.location.reload();
-
         },
-
         180000
-
     );
-
-
 </script>
 
-
 </body>
-
 </html>

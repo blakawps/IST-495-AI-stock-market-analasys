@@ -285,8 +285,7 @@ def agent_stop():
 @app.post("/agent/run")
 def agent_run_now():
 
-    run_agent()
-
+    collect_news()
 
     return redirect(
         url_for(

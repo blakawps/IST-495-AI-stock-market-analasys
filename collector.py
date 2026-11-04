@@ -16,7 +16,7 @@ from finviz_client import update_market_data
 from stocktwits_scraper import (collect_stocktwits_for_symbols)
 from news_sentiment import (analyze_news_sentiment)
 from analytics_history import (save_analytics_snapshots)
-from trading_agent import (run_agent)
+from trading_agent import (run_agent,get_active_universe,)
 
 ticker_resolver = TickerResolver()
 
@@ -691,6 +691,38 @@ def collect_news():
     # =========================================================
 
     try:
+
+        # Refresh ONLY the RL agent's actual universe immediately
+        # before observation so quotes cannot go stale while
+        # Stocktwits/news collection is running.
+        agent_symbols = get_active_universe()
+
+        if agent_symbols:
+
+            print()
+            print(
+                f"Refreshing {len(agent_symbols)} "
+                f"RL-agent symbols immediately before observation..."
+            )
+
+            agent_finviz_stats = update_market_data(
+                agent_symbols
+            )
+
+            stats["agent_finviz_refresh"] = (
+                agent_finviz_stats
+            )
+
+        else:
+
+            print(
+                "WARNING: RL active universe is empty."
+            )
+
+            stats["agent_finviz_refresh"] = {
+                "requested": 0,
+                "updated": 0,
+            }
 
         agent_stats = (
             run_agent()
